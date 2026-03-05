@@ -4,7 +4,7 @@ export default function TermsPage() {
       <h1 className="text-2xl font-semibold tracking-tight">Terms of Service (Draft)</h1>
       <p className="text-sm leading-relaxed text-zinc-600">
         This is a product draft of the CoLabs Terms of Service. It is not legal advice. Final
-        language will be prepared with counsel.
+        language will be prepared with counsel. Terms are
       </p>
       <section className="space-y-3 text-sm leading-relaxed text-zinc-700">
         <p>
