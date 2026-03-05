@@ -17,7 +17,11 @@ export default clerkMiddleware(async (auth, req) => {
     return;
   }
 
-  await auth().protect();
+  const session = await auth();
+
+  if (!session.userId) {
+    return session.redirectToSignIn();
+  }
 });
 
 export const config = {
