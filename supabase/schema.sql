@@ -101,6 +101,8 @@ create table space_media (
   type text not null,
   storage_path text not null,
   title text,
+  size_bytes bigint,
+  mime_type text,
   description text,
   attribution_user_id uuid references profiles (id),
   visibility text default 'internal',

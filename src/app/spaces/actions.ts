@@ -29,6 +29,8 @@ export type SpaceMedia = {
   type: string;
   storage_path: string;
   title: string | null;
+  size_bytes: number | null;
+  mime_type: string | null;
   created_at: string;
   publicUrl: string;
 };
@@ -149,7 +151,7 @@ export async function getSpacePageData(spaceId: string): Promise<SpacePageData> 
         .order("created_at", { ascending: true }),
       supabase
         .from("space_media")
-        .select("id, type, storage_path, title, created_at")
+        .select("id, type, storage_path, title, size_bytes, mime_type, created_at")
         .eq("space_id", spaceId)
         .order("created_at", { ascending: false }),
       supabase
@@ -287,6 +289,8 @@ export async function uploadSpaceMedia(spaceId: string, formData: FormData): Pro
       type,
       storage_path: path,
       title,
+      size_bytes: file.size,
+      mime_type: file.type || null,
     });
     if (insertError) return { ok: false, error: insertError.message };
     return { ok: true };
