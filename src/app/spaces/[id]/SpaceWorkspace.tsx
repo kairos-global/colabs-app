@@ -179,7 +179,9 @@ export function SpaceWorkspace({ spaceId, initialData }: SpaceWorkspaceProps) {
         </div>
       </main>
 
-      {inviteOpen && <InviteCollaboratorsModal onClose={() => setInviteOpen(false)} />}
+      {inviteOpen && (
+        <InviteCollaboratorsModal spaceId={spaceId} onClose={() => setInviteOpen(false)} />
+      )}
 
       {leaveDialogOpen && (
         <div

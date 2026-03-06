@@ -211,6 +211,22 @@ export type SpaceSummary = {
   memberCount: number;
 };
 
+export type SpaceInvite = {
+  id: string;
+  spaceId: string;
+  spaceTitle: string;
+  inviterName: string | null;
+  inviteeName: string | null;
+  status: string;
+  createdAt: string | null;
+  token: string;
+};
+
+export type SpaceInvitesForDashboard = {
+  sent: SpaceInvite[];
+  received: SpaceInvite[];
+};
+
 async function ensureSpaceAccess(spaceId: string) {
   const { userId } = await auth();
   if (!userId) return { profile: null, supabase: null };
@@ -245,6 +261,162 @@ export async function createSpaceMessage(spaceId: string, content: string): Prom
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+export async function createSpaceInvite(input: {
+  spaceId: string;
+  inviteeProfileId?: string;
+  inviteeEmail?: string;
+}): Promise<{ ok: true; joinUrl: string } | { ok: false; error: string }> {
+  try {
+    const { profile, supabase } = await ensureSpaceAccess(input.spaceId);
+    if (!profile || !supabase) return { ok: false, error: "Not allowed" };
+
+    if (!input.inviteeProfileId && !input.inviteeEmail) {
+      return { ok: false, error: "Invitee is required" };
+    }
+
+    const token = crypto.randomUUID();
+
+    const { error } = await supabase.from("space_invites").insert({
+      space_id: input.spaceId,
+      inviter_profile_id: profile.id,
+      invitee_profile_id: input.inviteeProfileId ?? null,
+      invitee_email: input.inviteeEmail ?? null,
+      token,
+    });
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+
+    return { ok: true, joinUrl: `/spaces/join/${token}` };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: message };
+  }
+}
+
+export async function acceptSpaceInviteByToken(
+  token: string
+): Promise<{ ok: true; spaceId: string } | { ok: false; error: string }> {
+  try {
+    const { userId } = await auth();
+    if (!userId) return { ok: false, error: "Not signed in" };
+
+    const supabase = getServerSupabaseClient();
+    const profile = await getProfileByClerkId(supabase, userId);
+    if (!profile) return { ok: false, error: "Profile not found" };
+
+    const { data: invite, error: inviteError } = await supabase
+      .from("space_invites")
+      .select("id, space_id, status, invitee_profile_id")
+      .eq("token", token)
+      .single();
+    if (inviteError || !invite) {
+      return { ok: false, error: "Invite not found or expired" };
+    }
+
+    if (invite.status !== "pending") {
+      return { ok: false, error: "Invite is no longer active" };
+    }
+
+    // Add the user as a member if they aren't already.
+    const { data: existingMember } = await supabase
+      .from("space_members")
+      .select("id")
+      .eq("space_id", invite.space_id)
+      .eq("user_id", profile.id)
+      .maybeSingle();
+
+    if (!existingMember) {
+      const { error: memberError } = await supabase.from("space_members").insert({
+        space_id: invite.space_id,
+        user_id: profile.id,
+        role: "member",
+      });
+      if (memberError) {
+        return { ok: false, error: memberError.message };
+      }
+    }
+
+    const { error: updateError } = await supabase
+      .from("space_invites")
+      .update({
+        status: "accepted",
+        invitee_profile_id: profile.id,
+        responded_at: new Date().toISOString(),
+      })
+      .eq("id", invite.id);
+    if (updateError) {
+      return { ok: false, error: updateError.message };
+    }
+
+    return { ok: true, spaceId: invite.space_id as string };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: message };
+  }
+}
+
+export async function listSpaceInvitesForDashboard(): Promise<SpaceInvitesForDashboard> {
+  try {
+    const { userId } = await auth();
+    if (!userId) return { sent: [], received: [] };
+    const supabase = getServerSupabaseClient();
+    const profile = await getProfileByClerkId(supabase, userId);
+    if (!profile) return { sent: [], received: [] };
+
+    const { data: inviteRows } = await supabase
+      .from("space_invites")
+      .select(
+        "id, space_id, inviter_profile_id, invitee_profile_id, status, created_at, token, spaces(title)"
+      )
+      .order("created_at", { ascending: false });
+    if (!inviteRows) return { sent: [], received: [] };
+
+    const profileIds = new Set<string>();
+    for (const row of inviteRows as any[]) {
+      if (row.inviter_profile_id) profileIds.add(row.inviter_profile_id as string);
+      if (row.invitee_profile_id) profileIds.add(row.invitee_profile_id as string);
+    }
+
+    const profilesMap = new Map<string, string | null>();
+    if (profileIds.size > 0) {
+      const { data: profilesRows } = await supabase
+        .from("profiles")
+        .select("id, display_name")
+        .in("id", Array.from(profileIds));
+      if (profilesRows) {
+        for (const row of profilesRows as { id: string; display_name: string | null }[]) {
+          profilesMap.set(row.id, row.display_name);
+        }
+      }
+    }
+
+    const normalizeRow = (row: any): SpaceInvite => ({
+      id: row.id as string,
+      spaceId: row.space_id as string,
+      spaceTitle: (row.spaces?.title as string) ?? "Untitled space",
+      inviterName: profilesMap.get(row.inviter_profile_id as string) ?? null,
+      inviteeName:
+        (row.invitee_profile_id && profilesMap.get(row.invitee_profile_id as string)) ?? null,
+      status: (row.status as string) ?? "pending",
+      createdAt: (row.created_at as string | null) ?? null,
+      token: row.token as string,
+    });
+
+    const sent = (inviteRows as any[])
+      .filter((row) => row.inviter_profile_id === profile.id)
+      .map(normalizeRow);
+
+    const received = (inviteRows as any[])
+      .filter((row) => row.invitee_profile_id === profile.id)
+      .map(normalizeRow);
+
+    return { sent, received };
+  } catch {
+    return { sent: [], received: [] };
   }
 }
 
