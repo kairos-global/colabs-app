@@ -24,6 +24,26 @@ export type ProfilePageData = {
   publishedCollabs: PublishedCollab[];
 };
 
+/** Platform profile for shell (avatar + display name). Returns null when not signed in. */
+export async function getShellProfile(): Promise<{
+  displayName: string | null;
+  avatarUrl: string | null;
+} | null> {
+  const { userId } = await auth();
+  if (!userId) return null;
+  const supabase = getServerSupabaseClient();
+  const user = await currentUser();
+  const displayName =
+    user?.firstName != null || user?.lastName != null
+      ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || null
+      : null;
+  const profile = await getOrCreateProfile(supabase, userId, displayName);
+  return {
+    displayName: profile.display_name ?? null,
+    avatarUrl: profile.avatar_url ?? null,
+  };
+}
+
 export async function getProfilePageData(): Promise<ProfilePageData> {
   const { userId } = await auth();
   const supabase = getServerSupabaseClient();
