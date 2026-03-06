@@ -116,21 +116,21 @@ export function ProfileView({ data }: ProfileViewProps) {
             {activeTab === "posts" && (
               <TabContentPosts
                 items={posts}
-                emptyMessage="display either posts, videos, or collabs here, whichever tab is selected"
+                emptyMessage="Posts, videos, and collabs will appear here."
                 onDetail={(item) => setDetailItem({ type: "media", item })}
               />
             )}
             {activeTab === "video" && (
               <TabContentVideos
                 items={videos}
-                emptyMessage="display either posts, videos, or collabs here, whichever tab is selected"
+                emptyMessage="Posts, videos, and collabs will appear here."
                 onDetail={(item) => setDetailItem({ type: "media", item })}
               />
             )}
             {activeTab === "collabs" && (
               <TabContentCollabs
                 items={publishedCollabs}
-                emptyMessage="display either posts, videos, or collabs here, whichever tab is selected"
+                emptyMessage="Posts, videos, and collabs will appear here."
                 onDetail={(item) => setDetailItem({ type: "collab", item })}
               />
             )}
@@ -152,13 +152,8 @@ function TabContentPosts({
 }) {
   if (items.length === 0) {
     return (
-      <div className="flex flex-col gap-3">
-        <div className="rounded-xl border border-[color:var(--border-subtle)] bg-zinc-200/60 p-6 text-center text-sm text-zinc-600">
-          {emptyMessage}
-        </div>
-        <div className="rounded-xl border border-[color:var(--border-subtle)] bg-zinc-200/60 p-6 text-center text-sm text-zinc-600">
-          {emptyMessage}
-        </div>
+      <div className="rounded-xl border border-[color:var(--border-subtle)] bg-zinc-200/60 p-6 text-center text-sm text-zinc-600">
+        {emptyMessage}
       </div>
     );
   }
@@ -203,13 +198,8 @@ function TabContentVideos({
 }) {
   if (items.length === 0) {
     return (
-      <div className="flex flex-col gap-3">
-        <div className="rounded-xl border border-[color:var(--border-subtle)] bg-zinc-200/60 p-6 text-center text-sm text-zinc-600">
-          {emptyMessage}
-        </div>
-        <div className="rounded-xl border border-[color:var(--border-subtle)] bg-zinc-200/60 p-6 text-center text-sm text-zinc-600">
-          {emptyMessage}
-        </div>
+      <div className="rounded-xl border border-[color:var(--border-subtle)] bg-zinc-200/60 p-6 text-center text-sm text-zinc-600">
+        {emptyMessage}
       </div>
     );
   }
@@ -245,13 +235,8 @@ function TabContentCollabs({
 }) {
   if (items.length === 0) {
     return (
-      <div className="flex flex-col gap-3">
-        <div className="rounded-xl border border-[color:var(--border-subtle)] bg-zinc-200/60 p-6 text-center text-sm text-zinc-600">
-          {emptyMessage}
-        </div>
-        <div className="rounded-xl border border-[color:var(--border-subtle)] bg-zinc-200/60 p-6 text-center text-sm text-zinc-600">
-          {emptyMessage}
-        </div>
+      <div className="rounded-xl border border-[color:var(--border-subtle)] bg-zinc-200/60 p-6 text-center text-sm text-zinc-600">
+        {emptyMessage}
       </div>
     );
   }

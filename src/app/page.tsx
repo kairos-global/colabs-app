@@ -1,25 +1,10 @@
 import Link from "next/link";
+import { HomeAuthHeader } from "@/components/HomeAuthHeader";
 
 export default function Home() {
   return (
     <>
-      <header className="flex items-center justify-end border-b border-[color:var(--border-subtle)] px-6 py-4">
-        <div className="flex items-center gap-3 text-sm">
-          <Link
-            href="/sign-in"
-            className="rounded-full border border-black bg-background px-3 py-1.5 text-sm font-medium hover:bg-white"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/sign-up"
-            className="rounded-full border border-black bg-[#00cefc] px-4 py-1.5 text-sm font-semibold text-black shadow-sm hover:bg-[#00b3dd]"
-          >
-            Sign up
-          </Link>
-        </div>
-      </header>
-
+      <HomeAuthHeader />
       <section className="flex flex-1 flex-col gap-12 px-6 py-10 md:px-16 md:py-16">
         <div className="max-w-3xl space-y-6">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">

@@ -83,19 +83,19 @@ export function AppShell({ children, shellProfile }: AppShellProps) {
         )}
       </aside>
 
-      {/* Mobile top bar */}
+      {/* Mobile top bar: hamburger only, no profile bubble in header */}
       <div className="flex flex-1 flex-col md:hidden">
         <header className="flex items-center justify-between border-b border-[color:var(--border-subtle)] bg-sidebar px-4 py-3">
           <div className="text-sm font-semibold tracking-tight">CoLabs</div>
           <button
             type="button"
-            aria-label="Toggle navigation"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-black bg-background"
+            aria-label="Open menu"
+            className="flex h-9 w-9 flex-col items-center justify-center gap-1.5 rounded-md hover:bg-zinc-100"
             onClick={() => setMobileOpen((open) => !open)}
           >
-            <span className="h-[1px] w-4 bg-black" />
-            <span className="mt-[5px] h-[1px] w-4 bg-black" />
-            <span className="mt-[5px] h-[1px] w-4 bg-black" />
+            <span className="h-0.5 w-5 rounded-full bg-foreground" />
+            <span className="h-0.5 w-5 rounded-full bg-foreground" />
+            <span className="h-0.5 w-5 rounded-full bg-foreground" />
           </button>
         </header>
 
@@ -113,7 +113,8 @@ export function AppShell({ children, shellProfile }: AppShellProps) {
                 </Link>
               ))}
             </div>
-            {shellProfile !== null && (
+            {/* When signed in: profile strip only. When signed out: Log in / Sign up only. */}
+            {shellProfile !== null ? (
               <Link
                 href="/profile"
                 onClick={() => setMobileOpen(false)}
@@ -139,6 +140,23 @@ export function AppShell({ children, shellProfile }: AppShellProps) {
                   {displayLabel}
                 </span>
               </Link>
+            ) : (
+              <div className="mt-3 flex flex-col gap-2 border-t border-[color:var(--border-subtle)] pt-3">
+                <Link
+                  href="/sign-in"
+                  onClick={() => setMobileOpen(false)}
+                  className="rounded-full border border-black bg-background px-4 py-2 text-center text-sm font-medium hover:bg-zinc-100"
+                >
+                  Log in
+                </Link>
+                <Link
+                  href="/sign-up"
+                  onClick={() => setMobileOpen(false)}
+                  className="rounded-full border border-black bg-[#00cefc] px-4 py-2 text-center text-sm font-semibold text-black hover:bg-[#00b3dd]"
+                >
+                  Sign up
+                </Link>
+              </div>
             )}
           </nav>
         )}
