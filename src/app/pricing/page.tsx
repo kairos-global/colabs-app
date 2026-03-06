@@ -25,7 +25,7 @@ export default function PricingPage() {
         </div>
 
         <header className="mx-auto mb-10 max-w-[780px] text-center md:mb-14">
-          <h1 className="font-serif text-4xl font-normal leading-[1.1] tracking-[-0.02em] md:text-[52px]">
+          <h1 className="text-4xl font-normal leading-[1.1] tracking-[-0.02em] md:text-[52px]">
             Simple, honest pricing.
           </h1>
           <p className="mx-auto mt-4 max-w-[380px] text-base font-light leading-relaxed text-zinc-500">

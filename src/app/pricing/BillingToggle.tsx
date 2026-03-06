@@ -80,7 +80,7 @@ export function BillingPricingSection() {
           </p>
           <div className="mt-7 flex items-baseline gap-1">
             <span className="text-xl font-light text-black/50">$</span>
-            <span className="font-serif text-5xl font-normal leading-none tracking-[-0.03em]">
+            <span className="text-5xl font-normal leading-none tracking-[-0.03em]">
               0
             </span>
           </div>
@@ -150,7 +150,7 @@ export function BillingPricingSection() {
           </p>
           <div className="mt-7 flex items-baseline gap-1">
             <span className="text-xl font-light text-white/40">$</span>
-            <span className="font-serif text-5xl font-normal leading-none tracking-[-0.03em]">
+            <span className="text-5xl font-normal leading-none tracking-[-0.03em]">
               {proPrice}
             </span>
             <span className="ml-1 text-xs font-light text-white/40">/ mo per seat</span>
