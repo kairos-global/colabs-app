@@ -45,6 +45,8 @@ create table profiles (
   bio text,
   avatar_url text,
   url text,
+  -- optional future billing fields
+  plan_tier text check (plan_tier in ('starter', 'pro')) default 'starter',
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

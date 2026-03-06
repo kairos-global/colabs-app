@@ -163,6 +163,7 @@ export function SpaceWorkspace({ spaceId, initialData }: SpaceWorkspaceProps) {
           <SpaceMediaQuadrant
             spaceId={spaceId}
             media={initialData.media}
+            storage={initialData.storage}
             onRefresh={() => router.refresh()}
           />
           <SpaceBulletinQuadrant
@@ -284,10 +285,12 @@ function SpaceMediaQuadrant({
   spaceId,
   media,
   onRefresh,
+  storage,
 }: {
   spaceId: string;
   media: SpaceMedia[];
   onRefresh: () => void;
+  storage: NonNullable<SpacePageData>["storage"];
 }) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -303,25 +306,37 @@ function SpaceMediaQuadrant({
     let anyOk = false;
     let lastError: string | null = null;
 
-    for (const file of files) {
-      const formData = new FormData();
-      formData.set("file", file);
-      const kind = file.type.startsWith("video/")
-        ? "video"
-        : file.type.startsWith("audio/")
-        ? "audio"
-        : "image";
-      formData.set("type", kind);
-      const result = await uploadSpaceMedia(spaceId, formData);
-      if (result.ok) {
-        anyOk = true;
-      } else {
-        lastError = result.error ?? "Upload failed";
+    try {
+      for (const file of files) {
+        const formData = new FormData();
+        formData.set("file", file);
+        const kind = file.type.startsWith("video/")
+          ? "video"
+          : file.type.startsWith("audio/")
+          ? "audio"
+          : "image";
+        formData.set("type", kind);
+        try {
+          const result = await uploadSpaceMedia(spaceId, formData);
+          if (result.ok) {
+            anyOk = true;
+          } else {
+            lastError = result.error ?? "Upload failed";
+            // eslint-disable-next-line no-console
+            console.error("uploadSpaceMedia error", result.error);
+          }
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          lastError = message;
+          // eslint-disable-next-line no-console
+          console.error("uploadSpaceMedia threw", message);
+        }
       }
+    } finally {
+      setUploading(false);
+      e.target.value = "";
     }
 
-    setUploading(false);
-    e.target.value = "";
     if (anyOk) {
       setError(null);
       onRefresh();
@@ -344,7 +359,10 @@ function SpaceMediaQuadrant({
     <section className="flex min-h-0 flex-col bg-zinc-100 p-4">
       <h2 className="text-sm font-semibold tracking-tight">view/upload media</h2>
       <p className="text-xs text-zinc-500">photo/video/audio</p>
-      <div className="mt-3 flex flex-1 min-h-0 flex-col gap-3 md:flex-row">
+      <div className="mt-1 text-[10px] text-zinc-500">
+        {formatBytes(storage.usedBytes)} of {formatBytes(storage.maxBytes)} used
+      </div>
+      <div className="mt-2 flex flex-1 min-h-0 flex-col gap-3 md:flex-row">
         <div className="flex shrink-0 flex-row gap-2 md:flex-col md:w-32">
           <div className="rounded-lg border border-zinc-300 bg-white/70 p-1.5">
             <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
@@ -710,4 +728,11 @@ function SpaceTasksQuadrant({
       </div>
     </section>
   );
+}
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 GB";
+  const gb = bytes / (1024 * 1024 * 1024);
+  if (gb < 0.1) return `${gb.toFixed(2)} GB`;
+  return `${gb.toFixed(1)} GB`;
 }

@@ -3,6 +3,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { getServerSupabaseClient } from "@/lib/supabase/server";
 import { getOrCreateProfile, getProfileByClerkId } from "@/lib/profile";
+import { STARTER_SPACE_BYTES } from "@/lib/billing/limits";
 
 export type CreateSpaceResult = { ok: true; spaceId: string } | { ok: false; error: string };
 export type UpdateSpaceResult = { ok: true } | { ok: false; error: string };
@@ -15,6 +16,10 @@ export type SpacePageData = {
   media: SpaceMedia[];
   bulletins: SpaceBulletin[];
   tasks: SpaceTask[];
+  storage: {
+    usedBytes: number;
+    maxBytes: number;
+  };
 } | null;
 
 export type SpaceMessage = {
@@ -167,10 +172,13 @@ export async function getSpacePageData(spaceId: string): Promise<SpacePageData> 
         .order("created_at", { ascending: false }),
     ]);
 
-    const mediaWithUrls: SpaceMedia[] = (mediaRes.data ?? []).map((row) => ({
+    const mediaRows = mediaRes.data ?? [];
+    const mediaWithUrls: SpaceMedia[] = mediaRows.map((row) => ({
       ...row,
       publicUrl: supabase.storage.from(BUCKET).getPublicUrl(row.storage_path).data.publicUrl,
     }));
+    const usedBytes =
+      mediaRows.reduce((sum, row) => sum + (row.size_bytes ?? 0), 0) ?? 0;
 
     return {
       id: space.id,
@@ -180,6 +188,10 @@ export async function getSpacePageData(spaceId: string): Promise<SpacePageData> 
       media: mediaWithUrls,
       bulletins: (boardsRes.data ?? []) as SpaceBulletin[],
       tasks: (tasksRes.data ?? []) as SpaceTask[],
+      storage: {
+        usedBytes,
+        maxBytes: STARTER_SPACE_BYTES,
+      },
     };
   } catch {
     return null;
@@ -284,6 +296,19 @@ export async function uploadSpaceMedia(spaceId: string, formData: FormData): Pro
     const ext =
       file.name.split(".").pop() ||
       (type === "video" ? "mp4" : type === "audio" ? "mp3" : "jpg");
+    // Enforce a simple per-space storage cap for now (Starter plan).
+    const { data: currentMedia, error: usageError } = await supabase
+      .from("space_media")
+      .select("size_bytes")
+      .eq("space_id", spaceId);
+    if (usageError) return { ok: false, error: usageError.message };
+    const usedBytes =
+      currentMedia?.reduce((sum, row) => sum + (row.size_bytes ?? 0), 0) ?? 0;
+    const estimated = usedBytes + file.size;
+    if (estimated > STARTER_SPACE_BYTES) {
+      return { ok: false, error: "Storage limit reached for this space (2 GB)." };
+    }
+
     const path = `spaces/${spaceId}/media/${crypto.randomUUID()}.${ext}`;
     const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, file, {
       contentType: file.type,
