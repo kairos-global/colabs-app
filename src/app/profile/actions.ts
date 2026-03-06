@@ -29,19 +29,32 @@ export async function getShellProfile(): Promise<{
   displayName: string | null;
   avatarUrl: string | null;
 } | null> {
-  const { userId } = await auth();
-  if (!userId) return null;
-  const supabase = getServerSupabaseClient();
-  const user = await currentUser();
-  const displayName =
-    user?.firstName != null || user?.lastName != null
-      ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || null
-      : null;
-  const profile = await getOrCreateProfile(supabase, userId, displayName);
-  return {
-    displayName: profile.display_name ?? null,
-    avatarUrl: profile.avatar_url ?? null,
-  };
+  try {
+    const { userId } = await auth();
+    if (!userId) return null;
+    const supabase = getServerSupabaseClient();
+    const user = await currentUser();
+    const displayName =
+      user?.firstName != null || user?.lastName != null
+        ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || null
+        : null;
+    const profile = await getOrCreateProfile(supabase, userId, displayName);
+    return {
+      displayName: profile.display_name ?? null,
+      avatarUrl: profile.avatar_url ?? null,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (
+      message.includes("clerkMiddleware") ||
+      message.includes("can't detect usage of clerkMiddleware") ||
+      message.includes("Clerk can't detect usage")
+    ) {
+      // During build-time prerender there's no request for Clerk middleware to run.
+      return null;
+    }
+    throw err;
+  }
 }
 
 export async function getProfilePageData(): Promise<ProfilePageData> {
