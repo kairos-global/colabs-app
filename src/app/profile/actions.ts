@@ -76,25 +76,32 @@ export async function updateProfileAction(formData: FormData): Promise<{ ok: boo
 }
 
 export async function uploadProfileMediaAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
-  const { userId } = await auth();
-  if (!userId) return { ok: false, error: "Not signed in" };
-  const supabase = getServerSupabaseClient();
-  const profile = await getProfileByClerkId(supabase, userId);
-  if (!profile) return { ok: false, error: "Profile not found" };
+  try {
+    const { userId } = await auth();
+    if (!userId) return { ok: false, error: "Not signed in" };
+    const supabase = getServerSupabaseClient();
+    const profile = await getProfileByClerkId(supabase, userId);
+    if (!profile) return { ok: false, error: "Profile not found" };
 
-  const type = formData.get("type") as string;
-  if (type !== "image" && type !== "video") return { ok: false, error: "Invalid type" };
-  const file = formData.get("file") as File | null;
-  if (!file || file.size === 0) return { ok: false, error: "No file" };
-  const caption = (formData.get("caption") as string)?.trim() || null;
+    const type = formData.get("type") as string;
+    if (type !== "image" && type !== "video") return { ok: false, error: "Invalid type" };
+    const file = formData.get("file") as File | null;
+    if (!file) return { ok: false, error: "No file" };
+    const size = typeof file.size === "number" ? file.size : 0;
+    if (size === 0) return { ok: false, error: "File is empty" };
+    const caption = (formData.get("caption") as string)?.trim() || null;
 
-  const ext = file.name.split(".").pop() || (type === "video" ? "mp4" : "jpg");
-  const path = `${userId}/media/${crypto.randomUUID()}.${ext}`;
-  const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, file, {
-    contentType: file.type,
-  });
-  if (uploadError) return { ok: false, error: uploadError.message };
+    const ext = (file.name && file.name.split(".").pop()) || (type === "video" ? "mp4" : "jpg");
+    const path = `${userId}/media/${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, file, {
+      contentType: file.type || (type === "video" ? "video/mp4" : "image/jpeg"),
+    });
+    if (uploadError) return { ok: false, error: uploadError.message };
 
-  await createProfileMedia(supabase, profile.id, { type: type as "image" | "video", storage_path: path, caption });
-  return { ok: true };
+    await createProfileMedia(supabase, profile.id, { type: type as "image" | "video", storage_path: path, caption });
+    return { ok: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: message };
+  }
 }

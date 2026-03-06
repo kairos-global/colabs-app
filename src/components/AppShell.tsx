@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useUser } from "@clerk/nextjs";
 
 const navItems = [
   { href: "/", label: "Home" },
@@ -19,6 +20,11 @@ type AppShellProps = {
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, isSignedIn } = useUser();
+  const displayName =
+    user?.firstName || user?.lastName
+      ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim()
+      : user?.emailAddresses?.[0]?.emailAddress ?? "Profile";
 
   const linkClasses = (href: string) => {
     const active = pathname === href;
@@ -46,6 +52,33 @@ export function AppShell({ children }: AppShellProps) {
             ))}
           </div>
         </nav>
+
+        {isSignedIn && user && (
+          <Link
+            href="/profile"
+            className="mt-auto flex items-center gap-3 rounded-full px-2 py-2 hover:bg-zinc-100"
+          >
+            <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-zinc-200">
+              {user.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.imageUrl}
+                  alt=""
+                  width={36}
+                  height={36}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-sm font-medium text-zinc-600">
+                  {(user.firstName?.[0] ?? user.emailAddresses?.[0]?.emailAddress?.[0] ?? "?").toUpperCase()}
+                </span>
+              )}
+            </span>
+            <span className="min-w-0 truncate text-sm font-medium text-zinc-800">
+              {displayName}
+            </span>
+          </Link>
+        )}
       </aside>
 
       {/* Mobile top bar */}
@@ -78,6 +111,33 @@ export function AppShell({ children }: AppShellProps) {
                 </Link>
               ))}
             </div>
+            {isSignedIn && user && (
+              <Link
+                href="/profile"
+                onClick={() => setMobileOpen(false)}
+                className="mt-3 flex items-center gap-3 rounded-full border-t border-[color:var(--border-subtle)] pt-3"
+              >
+                <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-zinc-200">
+                  {user.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={user.imageUrl}
+                      alt=""
+                      width={36}
+                      height={36}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center text-sm font-medium text-zinc-600">
+                      {(user.firstName?.[0] ?? user.emailAddresses?.[0]?.emailAddress?.[0] ?? "?").toUpperCase()}
+                    </span>
+                  )}
+                </span>
+                <span className="min-w-0 truncate text-sm font-medium text-zinc-800">
+                  {displayName}
+                </span>
+              </Link>
+            )}
           </nav>
         )}
 

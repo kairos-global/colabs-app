@@ -68,17 +68,22 @@ export function UploadProfileMediaModal({ onClose }: UploadProfileMediaModalProp
       return;
     }
     setPending(true);
-    const formData = new FormData();
-    formData.set("type", type);
-    formData.set("file", file);
-    if (caption.trim()) formData.set("caption", caption.trim());
-    const result = await uploadProfileMediaAction(formData);
-    setPending(false);
-    if (result.ok) {
-      router.refresh();
-      onClose();
-    } else {
-      setError(result.error ?? "Upload failed");
+    try {
+      const formData = new FormData();
+      formData.set("type", type);
+      formData.set("file", file);
+      if (caption.trim()) formData.set("caption", caption.trim());
+      const result = await uploadProfileMediaAction(formData);
+      if (result.ok) {
+        router.refresh();
+        onClose();
+      } else {
+        setError(result.error ?? "Upload failed");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setPending(false);
     }
   }
 
