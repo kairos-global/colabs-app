@@ -32,11 +32,13 @@ create table if not exists collaboration_listings (
 
 alter table collaboration_listings enable row level security;
 
-create policy if not exists "collaboration_listings_select"
+drop policy if exists "collaboration_listings_select" on collaboration_listings;
+create policy "collaboration_listings_select"
   on collaboration_listings for select
   using (true);
 
-create policy if not exists "collaboration_listings_insert"
+drop policy if exists "collaboration_listings_insert" on collaboration_listings;
+create policy "collaboration_listings_insert"
   on collaboration_listings for insert
   with check (
     owner_profile_id in (
@@ -44,7 +46,8 @@ create policy if not exists "collaboration_listings_insert"
     )
   );
 
-create policy if not exists "collaboration_listings_update"
+drop policy if exists "collaboration_listings_update" on collaboration_listings;
+create policy "collaboration_listings_update"
   on collaboration_listings for update
   using (
     owner_profile_id in (
@@ -52,7 +55,8 @@ create policy if not exists "collaboration_listings_update"
     )
   );
 
-create policy if not exists "collaboration_listings_delete"
+drop policy if exists "collaboration_listings_delete" on collaboration_listings;
+create policy "collaboration_listings_delete"
   on collaboration_listings for delete
   using (
     owner_profile_id in (
@@ -81,7 +85,8 @@ alter table collaboration_applications enable row level security;
 --   - current profile ids for the logged-in Clerk user
 --   - listings owned by the current user
 
-create policy if not exists "collaboration_applications_select"
+drop policy if exists "collaboration_applications_select" on collaboration_applications;
+create policy "collaboration_applications_select"
   on collaboration_applications for select
   using (
     -- You are the applicant
@@ -99,7 +104,8 @@ create policy if not exists "collaboration_applications_select"
     )
   );
 
-create policy if not exists "collaboration_applications_insert"
+drop policy if exists "collaboration_applications_insert" on collaboration_applications;
+create policy "collaboration_applications_insert"
   on collaboration_applications for insert
   with check (
     applicant_profile_id in (
@@ -107,7 +113,8 @@ create policy if not exists "collaboration_applications_insert"
     )
   );
 
-create policy if not exists "collaboration_applications_update"
+drop policy if exists "collaboration_applications_update" on collaboration_applications;
+create policy "collaboration_applications_update"
   on collaboration_applications for update
   using (
     applicant_profile_id in (
@@ -123,7 +130,8 @@ create policy if not exists "collaboration_applications_update"
     )
   );
 
-create policy if not exists "collaboration_applications_delete"
+drop policy if exists "collaboration_applications_delete" on collaboration_applications;
+create policy "collaboration_applications_delete"
   on collaboration_applications for delete
   using (
     applicant_profile_id in (
@@ -159,7 +167,8 @@ alter table space_invites enable row level security;
 
 -- Reuse the common \"spaces you can access\" expression from other policies.
 
-create policy if not exists "space_invites_select"
+drop policy if exists "space_invites_select" on space_invites;
+create policy "space_invites_select"
   on space_invites for select
   using (
     -- You own or are a member of the space
@@ -185,7 +194,8 @@ create policy if not exists "space_invites_select"
     )
   );
 
-create policy if not exists "space_invites_insert"
+drop policy if exists "space_invites_insert" on space_invites;
+create policy "space_invites_insert"
   on space_invites for insert
   with check (
     -- Only users who can access the space (owner or member) may create invites.
@@ -201,7 +211,8 @@ create policy if not exists "space_invites_insert"
     )
   );
 
-create policy if not exists "space_invites_update"
+drop policy if exists "space_invites_update" on space_invites;
+create policy "space_invites_update"
   on space_invites for update
   using (
     -- Space owner or inviter can update (e.g., mark expired or resend).
@@ -222,7 +233,8 @@ create policy if not exists "space_invites_update"
     )
   );
 
-create policy if not exists "space_invites_delete"
+drop policy if exists "space_invites_delete" on space_invites;
+create policy "space_invites_delete"
   on space_invites for delete
   using (
     inviter_profile_id in (
