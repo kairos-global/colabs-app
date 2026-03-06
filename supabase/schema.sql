@@ -1,10 +1,27 @@
 -- High-level schema draft for CoLabs, aligned with the product spec.
 -- This is intentionally minimal and will be refined as we hook up Supabase.
+--
+-- Storage: create a bucket named "profile-media" in Supabase Dashboard.
+-- Paths: {clerk_user_id}/avatar.{ext} and {clerk_user_id}/media/{uuid}.{ext}
+-- RLS: users can read/write only objects under their own clerk_user_id prefix.
 
 create table if not exists profiles (
   id uuid primary key default gen_random_uuid(),
+  clerk_user_id text unique,
   display_name text,
   bio text,
+  avatar_url text,
+  url text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create table if not exists profile_media (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid not null references profiles (id) on delete cascade,
+  type text not null check (type in ('image', 'video')),
+  storage_path text not null,
+  caption text,
   created_at timestamptz default now()
 );
 
