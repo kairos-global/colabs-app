@@ -30,6 +30,12 @@ export default function Home() {
             >
               Browse community
             </Link>
+            <Link
+              href="/pricing"
+              className="rounded-full border border-black bg-background px-5 py-2 font-medium text-foreground hover:bg-zinc-100"
+            >
+              Pricing
+            </Link>
           </div>
         </div>
       </section>
