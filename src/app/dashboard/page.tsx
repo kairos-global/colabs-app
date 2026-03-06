@@ -1,6 +1,8 @@
+import { NewSpaceButton } from "./NewSpaceButton";
+
 export default function DashboardPage() {
   return (
-    <main className="flex min-h-screen flex-col bg-background px-6 py-10 text-foreground md:px-12">
+    <main className="flex min-h-screen flex-col bg-background px-4 py-6 text-foreground md:px-12 md:py-10">
       <header className="mb-8 flex items-center justify-between gap-4">
         <div className="space-y-1">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
@@ -9,9 +11,7 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Your work at a glance</h1>
         </div>
         <div className="flex gap-2 text-sm">
-          <button className="rounded-full border border-black bg-[#00cefc] px-4 py-1.5 font-semibold text-black shadow-sm hover:bg-[#00b3dd]">
-            New space
-          </button>
+          <NewSpaceButton />
         </div>
       </header>
 

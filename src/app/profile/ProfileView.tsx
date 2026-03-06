@@ -22,7 +22,7 @@ export function ProfileView({ data }: ProfileViewProps) {
   const videos = profileMedia.filter((m) => m.type === "video");
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 bg-background px-6 py-8 text-foreground md:py-10">
+    <div className="mx-auto flex min-h-screen max-w-3xl flex-col gap-4 bg-background px-4 py-5 text-foreground md:gap-6 md:px-6 md:py-10">
       <header className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
         {profile && (
@@ -51,24 +51,24 @@ export function ProfileView({ data }: ProfileViewProps) {
       {uploadOpen && <UploadProfileMediaModal onClose={() => setUploadOpen(false)} />}
       <ProfileItemDetailModal item={detailItem} onClose={() => setDetailItem(null)} />
 
-      {/* Profile card */}
-      <section className="rounded-2xl border border-[color:var(--border-subtle)] bg-sidebar p-6">
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
+      {/* Profile card: larger on mobile, less outer padding */}
+      <section className="rounded-2xl border border-[color:var(--border-subtle)] bg-sidebar p-5 md:p-6">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-6">
           <div className="shrink-0">
             {profile?.avatar_url ? (
               <img
                 src={profile.avatar_url}
                 alt=""
-                className="h-24 w-24 rounded-full border border-[color:var(--border-subtle)] object-cover sm:h-28 sm:w-28"
+                className="h-28 w-28 rounded-full border border-[color:var(--border-subtle)] object-cover sm:h-32 sm:w-32"
               />
             ) : (
-              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-black text-center text-xs font-medium text-white sm:h-28 sm:w-28">
+              <div className="flex h-28 w-28 items-center justify-center rounded-full bg-black text-center text-xs font-medium text-white sm:h-32 sm:w-32">
                 profile picture
               </div>
             )}
           </div>
           <div className="min-w-0 flex-1 space-y-1">
-            <p className="text-base font-medium text-foreground">
+            <p className="text-base font-medium text-foreground md:text-lg">
               {profile?.display_name?.trim() || "name"}
             </p>
             <p className="text-sm text-zinc-600">
@@ -81,7 +81,7 @@ export function ProfileView({ data }: ProfileViewProps) {
         </div>
 
         {/* Tabs: unified pill, cyan active */}
-        <div className="mt-6 border-t border-[color:var(--border-subtle)] pt-4">
+        <div className="mt-5 border-t border-[color:var(--border-subtle)] pt-4 md:mt-6">
           <div
             className="flex overflow-hidden rounded-full border border-[color:var(--border-subtle)] bg-zinc-200/80"
             role="tablist"
