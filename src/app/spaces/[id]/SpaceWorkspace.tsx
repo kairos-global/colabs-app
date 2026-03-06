@@ -3,9 +3,19 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { updateSpace } from "@/app/spaces/actions";
+import {
+  updateSpace,
+  createSpaceMessage,
+  createSpaceBulletin,
+  createSpaceTask,
+  uploadSpaceMedia,
+  type SpacePageData,
+  type SpaceMessage,
+  type SpaceMedia,
+  type SpaceBulletin,
+  type SpaceTask,
+} from "@/app/spaces/actions";
 import { InviteCollaboratorsModal } from "@/components/InviteCollaboratorsModal";
-import type { SpacePageData } from "@/app/spaces/actions";
 
 type SpaceWorkspaceProps = {
   spaceId: string;
@@ -144,32 +154,27 @@ export function SpaceWorkspace({ spaceId, initialData }: SpaceWorkspaceProps) {
       </header>
 
       <main className="flex-1 p-4 md:p-6">
-        <div className="mx-auto grid h-full min-h-[60vh] max-w-5xl grid-cols-1 grid-rows-4 gap-px overflow-hidden rounded-xl border-2 border-black bg-black md:grid-cols-2 md:grid-rows-2">
-          <section className="flex flex-col bg-zinc-100 p-4 rounded-t-xl md:rounded-tl-xl">
-            <h2 className="text-sm font-semibold tracking-tight">chat</h2>
-            <div className="mt-2 flex flex-1 items-center justify-center text-xs text-zinc-500">
-              Placeholder
-            </div>
-          </section>
-          <section className="flex flex-col bg-zinc-100 p-4 md:rounded-tr-xl">
-            <h2 className="text-sm font-semibold tracking-tight">view/upload media</h2>
-            <p className="text-xs text-zinc-500">photo/video/audio</p>
-            <div className="mt-2 flex flex-1 items-center justify-center text-xs text-zinc-500">
-              Placeholder
-            </div>
-          </section>
-          <section className="flex flex-col bg-zinc-100 p-4 md:rounded-bl-xl">
-            <h2 className="text-sm font-semibold tracking-tight">bulletin board</h2>
-            <div className="mt-2 flex flex-1 items-center justify-center text-xs text-zinc-500">
-              Placeholder
-            </div>
-          </section>
-          <section className="flex flex-col bg-zinc-100 p-4 rounded-b-xl md:rounded-br-xl">
-            <h2 className="text-sm font-semibold tracking-tight">task board</h2>
-            <div className="mt-2 flex flex-1 items-center justify-center text-xs text-zinc-500">
-              Placeholder
-            </div>
-          </section>
+        <div className="mx-auto grid h-full min-h-[60vh] max-w-5xl grid-cols-1 grid-rows-4 gap-0.5 overflow-hidden rounded-xl border-2 border-black bg-black md:grid-cols-2 md:grid-rows-2">
+          <SpaceChatQuadrant
+            spaceId={spaceId}
+            messages={initialData.messages}
+            onRefresh={() => router.refresh()}
+          />
+          <SpaceMediaQuadrant
+            spaceId={spaceId}
+            media={initialData.media}
+            onRefresh={() => router.refresh()}
+          />
+          <SpaceBulletinQuadrant
+            spaceId={spaceId}
+            bulletins={initialData.bulletins}
+            onRefresh={() => router.refresh()}
+          />
+          <SpaceTasksQuadrant
+            spaceId={spaceId}
+            tasks={initialData.tasks}
+            onRefresh={() => router.refresh()}
+          />
         </div>
       </main>
 
@@ -212,5 +217,278 @@ export function SpaceWorkspace({ spaceId, initialData }: SpaceWorkspaceProps) {
         </div>
       )}
     </div>
+  );
+}
+
+function SpaceChatQuadrant({
+  spaceId,
+  messages,
+  onRefresh,
+}: {
+  spaceId: string;
+  messages: SpaceMessage[];
+  onRefresh: () => void;
+}) {
+  const [content, setContent] = useState("");
+  const [pending, setPending] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!content.trim() || pending) return;
+    setPending(true);
+    const result = await createSpaceMessage(spaceId, content);
+    setPending(false);
+    if (result.ok) {
+      setContent("");
+      onRefresh();
+    }
+  }
+
+  return (
+    <section className="flex min-h-0 flex-col bg-zinc-100 p-4">
+      <h2 className="text-sm font-semibold tracking-tight">chat</h2>
+      <div className="mt-2 flex flex-1 min-h-0 flex-col gap-2 overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-y-auto space-y-1.5">
+          {messages.length === 0 ? (
+            <p className="text-xs text-zinc-500">No messages yet.</p>
+          ) : (
+            messages.map((m) => (
+              <div key={m.id} className="rounded-lg bg-white/80 px-2 py-1.5 text-xs">
+                {m.content}
+              </div>
+            ))
+          )}
+        </div>
+        <form onSubmit={handleSubmit} className="flex gap-1">
+          <input
+            type="text"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Type a message..."
+            className="min-w-0 flex-1 rounded border border-zinc-300 bg-white px-2 py-1 text-xs"
+          />
+          <button
+            type="submit"
+            disabled={pending || !content.trim()}
+            className="shrink-0 rounded border border-black bg-[#00cefc] px-2 py-1 text-xs font-medium text-black disabled:opacity-50"
+          >
+            Send
+          </button>
+        </form>
+      </div>
+    </section>
+  );
+}
+
+function SpaceMediaQuadrant({
+  spaceId,
+  media,
+  onRefresh,
+}: {
+  spaceId: string;
+  media: SpaceMedia[];
+  onRefresh: () => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || uploading) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.set("file", file);
+    formData.set("type", file.type.startsWith("video/") ? "video" : "image");
+    const result = await uploadSpaceMedia(spaceId, formData);
+    setUploading(false);
+    e.target.value = "";
+    if (result.ok) onRefresh();
+  }
+
+  return (
+    <section className="flex min-h-0 flex-col bg-zinc-100 p-4">
+      <h2 className="text-sm font-semibold tracking-tight">view/upload media</h2>
+      <p className="text-xs text-zinc-500">photo/video/audio</p>
+      <div className="mt-2 flex flex-1 min-h-0 flex-col gap-2">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {media.length === 0 ? (
+            <p className="text-xs text-zinc-500">No media yet.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-1">
+              {media.map((m) =>
+                m.type === "image" ? (
+                  <a key={m.id} href={m.publicUrl} target="_blank" rel="noopener noreferrer" className="block aspect-square overflow-hidden rounded border border-zinc-300">
+                    <img src={m.publicUrl} alt={m.title ?? "Media"} className="h-full w-full object-cover" />
+                  </a>
+                ) : (
+                  <a key={m.id} href={m.publicUrl} target="_blank" rel="noopener noreferrer" className="block rounded border border-zinc-300 text-xs text-zinc-600">
+                    Video
+                  </a>
+                )
+              )}
+            </div>
+          )}
+        </div>
+        <div className="shrink-0">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            className="sr-only"
+            onChange={handleUpload}
+            disabled={uploading}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="rounded border border-black bg-[#00cefc] px-2 py-1 text-xs font-medium text-black disabled:opacity-50"
+          >
+            {uploading ? "Uploading…" : "Upload"}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SpaceBulletinQuadrant({
+  spaceId,
+  bulletins,
+  onRefresh,
+}: {
+  spaceId: string;
+  bulletins: SpaceBulletin[];
+  onRefresh: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [pending, setPending] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!title.trim() || pending) return;
+    setPending(true);
+    const result = await createSpaceBulletin(spaceId, title, description || null);
+    setPending(false);
+    if (result.ok) {
+      setTitle("");
+      setDescription("");
+      onRefresh();
+    }
+  }
+
+  return (
+    <section className="flex min-h-0 flex-col bg-zinc-100 p-4">
+      <h2 className="text-sm font-semibold tracking-tight">bulletin board</h2>
+      <div className="mt-2 flex flex-1 min-h-0 flex-col gap-2">
+        <div className="min-h-0 flex-1 overflow-y-auto space-y-1.5">
+          {bulletins.length === 0 ? (
+            <p className="text-xs text-zinc-500">No bulletins yet.</p>
+          ) : (
+            bulletins.map((b) => (
+              <div key={b.id} className="rounded-lg border border-zinc-300 bg-white/80 p-2">
+                <p className="text-xs font-medium">{b.title}</p>
+                {b.description && <p className="mt-0.5 text-[10px] text-zinc-500">{b.description}</p>}
+              </div>
+            ))
+          )}
+        </div>
+        <form onSubmit={handleSubmit} className="shrink-0 flex flex-col gap-1">
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Title"
+            className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs"
+          />
+          <input
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Description (optional)"
+            className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs"
+          />
+          <button
+            type="submit"
+            disabled={pending || !title.trim()}
+            className="rounded border border-black bg-[#00cefc] px-2 py-1 text-xs font-medium text-black disabled:opacity-50"
+          >
+            Add
+          </button>
+        </form>
+      </div>
+    </section>
+  );
+}
+
+function SpaceTasksQuadrant({
+  spaceId,
+  tasks,
+  onRefresh,
+}: {
+  spaceId: string;
+  tasks: SpaceTask[];
+  onRefresh: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [pending, setPending] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!title.trim() || pending) return;
+    setPending(true);
+    const result = await createSpaceTask(spaceId, title, description || null);
+    setPending(false);
+    if (result.ok) {
+      setTitle("");
+      setDescription("");
+      onRefresh();
+    }
+  }
+
+  return (
+    <section className="flex min-h-0 flex-col bg-zinc-100 p-4">
+      <h2 className="text-sm font-semibold tracking-tight">task board</h2>
+      <div className="mt-2 flex flex-1 min-h-0 flex-col gap-2">
+        <div className="min-h-0 flex-1 overflow-y-auto space-y-1.5">
+          {tasks.length === 0 ? (
+            <p className="text-xs text-zinc-500">No tasks yet.</p>
+          ) : (
+            tasks.map((t) => (
+              <div key={t.id} className="rounded-lg border border-zinc-300 bg-white/80 p-2">
+                <p className="text-xs font-medium">{t.title}</p>
+                {t.description && <p className="mt-0.5 text-[10px] text-zinc-500">{t.description}</p>}
+                <span className="mt-0.5 inline-block rounded bg-zinc-200 px-1 text-[10px]">{t.status}</span>
+              </div>
+            ))
+          )}
+        </div>
+        <form onSubmit={handleSubmit} className="shrink-0 flex flex-col gap-1">
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Task title"
+            className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs"
+          />
+          <input
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Description (optional)"
+            className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs"
+          />
+          <button
+            type="submit"
+            disabled={pending || !title.trim()}
+            className="rounded border border-black bg-[#00cefc] px-2 py-1 text-xs font-medium text-black disabled:opacity-50"
+          >
+            Add task
+          </button>
+        </form>
+      </div>
+    </section>
   );
 }
