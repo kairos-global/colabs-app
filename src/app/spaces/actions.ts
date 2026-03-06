@@ -204,6 +204,12 @@ export type CreateMessageResult = { ok: true } | { ok: false; error: string };
 export type CreateBulletinResult = { ok: true } | { ok: false; error: string };
 export type CreateTaskResult = { ok: true } | { ok: false; error: string };
 export type UploadSpaceMediaResult = { ok: true } | { ok: false; error: string };
+export type SpaceSummary = {
+  id: string;
+  title: string;
+  updatedAt: string | null;
+  memberCount: number;
+};
 
 async function ensureSpaceAccess(spaceId: string) {
   const { userId } = await auth();
@@ -239,6 +245,55 @@ export async function createSpaceMessage(spaceId: string, content: string): Prom
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+export async function getUserSpaces(): Promise<SpaceSummary[]> {
+  try {
+    const { userId } = await auth();
+    if (!userId) return [];
+    const supabase = getServerSupabaseClient();
+    const profile = await getProfileByClerkId(supabase, userId);
+    if (!profile) return [];
+
+    const { data: memberships, error: membershipsError } = await supabase
+      .from("space_members")
+      .select("space_id")
+      .eq("user_id", profile.id);
+    if (membershipsError || !memberships || memberships.length === 0) return [];
+
+    const spaceIds = memberships.map((row: { space_id: string }) => row.space_id);
+
+    const { data: spaces, error: spacesError } = await supabase
+      .from("spaces")
+      .select("id, title, updated_at, created_at")
+      .in("id", spaceIds)
+      .order("updated_at", { ascending: false });
+    if (spacesError || !spaces) return [];
+
+    const { data: memberRows, error: memberError } = await supabase
+      .from("space_members")
+      .select("space_id")
+      .in("space_id", spaceIds);
+
+    const countsBySpace = new Map<string, number>();
+    if (!memberError && memberRows) {
+      for (const row of memberRows as { space_id: string }[]) {
+        const id = row.space_id;
+        countsBySpace.set(id, (countsBySpace.get(id) ?? 0) + 1);
+      }
+    }
+
+    return (spaces as { id: string; title: string | null; updated_at: string | null; created_at: string | null }[]).map(
+      (space) => ({
+        id: space.id,
+        title: space.title?.trim() || "Untitled",
+        updatedAt: space.updated_at ?? space.created_at,
+        memberCount: countsBySpace.get(space.id) ?? 1,
+      })
+    );
+  } catch {
+    return [];
   }
 }
 
@@ -297,6 +352,12 @@ export async function uploadSpaceMedia(spaceId: string, formData: FormData): Pro
       file.name.split(".").pop() ||
       (type === "video" ? "mp4" : type === "audio" ? "mp3" : "jpg");
     // Enforce a simple per-space storage cap for now (Starter plan).
+    if (file.size > STARTER_SPACE_BYTES) {
+      return {
+        ok: false,
+        error: "This file is larger than your current 2 GB space limit.",
+      };
+    }
     const { data: currentMedia, error: usageError } = await supabase
       .from("space_media")
       .select("size_bytes")
@@ -306,7 +367,10 @@ export async function uploadSpaceMedia(spaceId: string, formData: FormData): Pro
       currentMedia?.reduce((sum, row) => sum + (row.size_bytes ?? 0), 0) ?? 0;
     const estimated = usedBytes + file.size;
     if (estimated > STARTER_SPACE_BYTES) {
-      return { ok: false, error: "Storage limit reached for this space (2 GB)." };
+      return {
+        ok: false,
+        error: "Uploading this file would exceed your space's 2 GB storage limit.",
+      };
     }
 
     const path = `spaces/${spaceId}/media/${crypto.randomUUID()}.${ext}`;

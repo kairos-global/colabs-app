@@ -294,20 +294,28 @@ function SpaceMediaQuadrant({
 }) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(
+    null
+  );
   const [selectedId, setSelectedId] = useState<string | null>(media[0]?.id ?? null);
   const [filter, setFilter] = useState<"all" | "image" | "video" | "audio">("all");
   const [error, setError] = useState<string | null>(null);
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []);
+    const input = e.target;
+    const files = Array.from(input.files ?? []);
     if (!files.length || uploading) return;
 
     setUploading(true);
+    setError(null);
+    setUploadProgress({ current: 0, total: files.length });
     let anyOk = false;
     let lastError: string | null = null;
 
     try {
-      for (const file of files) {
+      for (let index = 0; index < files.length; index += 1) {
+        const file = files[index];
+        setUploadProgress({ current: index + 1, total: files.length });
         const formData = new FormData();
         formData.set("file", file);
         const kind = file.type.startsWith("video/")
@@ -334,7 +342,12 @@ function SpaceMediaQuadrant({
       }
     } finally {
       setUploading(false);
-      e.target.value = "";
+      setUploadProgress(null);
+      try {
+        input.value = "";
+      } catch {
+        // ignore
+      }
     }
 
     if (anyOk) {
@@ -441,7 +454,11 @@ function SpaceMediaQuadrant({
               disabled={uploading}
               className="mt-1 w-full rounded border border-black bg-[#00cefc] px-2 py-1 text-xs font-medium text-black disabled:opacity-50"
             >
-              {uploading ? "Uploading…" : "Upload…"}
+              {uploading && uploadProgress
+                ? `Uploading ${uploadProgress.current}/${uploadProgress.total}…`
+                : uploading
+                ? "Uploading…"
+                : "Upload…"}
             </button>
           </div>
         </div>
@@ -529,7 +546,11 @@ function SpaceMediaQuadrant({
                 disabled={uploading}
                 className="rounded border border-black bg-[#00cefc] px-2 py-0.5 text-[10px] font-medium text-black disabled:opacity-50"
               >
-                {uploading ? "Uploading…" : "Upload…"}
+                {uploading && uploadProgress
+                  ? `Uploading ${uploadProgress.current}/${uploadProgress.total}…`
+                  : uploading
+                  ? "Uploading…"
+                  : "Upload…"}
               </button>
             </div>
           </div>
