@@ -49,7 +49,7 @@ export function ProfileView({ data }: ProfileViewProps) {
       {uploadOpen && <UploadProfileMediaModal onClose={() => setUploadOpen(false)} />}
 
       {/* Profile card */}
-      <section className="rounded-2xl border border-[color:var(--border-subtle)] bg-zinc-100/80 p-6">
+      <section className="rounded-2xl border border-[color:var(--border-subtle)] bg-sidebar p-6">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
           <div className="shrink-0">
             {profile?.avatar_url ? (
