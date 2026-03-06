@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { EditProfileModal } from "@/components/EditProfileModal";
 import { UploadProfileMediaModal } from "@/components/UploadProfileMediaModal";
+import { ProfileItemDetailModal, type DetailItem } from "@/components/ProfileItemDetailModal";
 import type { ProfilePageData, ProfileMediaWithUrl } from "@/app/profile/actions";
 import type { PublishedCollab } from "@/lib/profile";
 
@@ -14,6 +15,7 @@ export function ProfileView({ data }: ProfileViewProps) {
   const { profile, profileMedia, publishedCollabs } = data;
   const [editOpen, setEditOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [detailItem, setDetailItem] = useState<DetailItem | null>(null);
   const [activeTab, setActiveTab] = useState<"posts" | "video" | "collabs">("posts");
 
   const posts = profileMedia.filter((m) => m.type === "image");
@@ -47,6 +49,7 @@ export function ProfileView({ data }: ProfileViewProps) {
         <EditProfileModal profile={profile} onClose={() => setEditOpen(false)} />
       )}
       {uploadOpen && <UploadProfileMediaModal onClose={() => setUploadOpen(false)} />}
+      <ProfileItemDetailModal item={detailItem} onClose={() => setDetailItem(null)} />
 
       {/* Profile card */}
       <section className="rounded-2xl border border-[color:var(--border-subtle)] bg-sidebar p-6">
@@ -114,18 +117,21 @@ export function ProfileView({ data }: ProfileViewProps) {
               <TabContentPosts
                 items={posts}
                 emptyMessage="display either posts, videos, or collabs here, whichever tab is selected"
+                onDetail={(item) => setDetailItem({ type: "media", item })}
               />
             )}
             {activeTab === "video" && (
               <TabContentVideos
                 items={videos}
                 emptyMessage="display either posts, videos, or collabs here, whichever tab is selected"
+                onDetail={(item) => setDetailItem({ type: "media", item })}
               />
             )}
             {activeTab === "collabs" && (
               <TabContentCollabs
                 items={publishedCollabs}
                 emptyMessage="display either posts, videos, or collabs here, whichever tab is selected"
+                onDetail={(item) => setDetailItem({ type: "collab", item })}
               />
             )}
           </div>
@@ -138,9 +144,11 @@ export function ProfileView({ data }: ProfileViewProps) {
 function TabContentPosts({
   items,
   emptyMessage,
+  onDetail,
 }: {
   items: ProfileMediaWithUrl[];
   emptyMessage: string;
+  onDetail: (item: ProfileMediaWithUrl) => void;
 }) {
   if (items.length === 0) {
     return (
@@ -157,15 +165,28 @@ function TabContentPosts({
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {items.map((item) => (
-        <a
+        <div
           key={item.id}
-          href={item.publicUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block aspect-square overflow-hidden rounded-xl border border-[color:var(--border-subtle)] bg-zinc-100"
+          className="flex flex-col overflow-hidden rounded-xl border border-[color:var(--border-subtle)] bg-zinc-100"
         >
-          <img src={item.publicUrl} alt={item.caption ?? "Post"} className="h-full w-full object-cover" />
-        </a>
+          <a
+            href={item.publicUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block aspect-square overflow-hidden"
+          >
+            <img src={item.publicUrl} alt={item.caption ?? "Post"} className="h-full w-full object-cover" />
+          </a>
+          <div className="flex justify-center p-2">
+            <button
+              type="button"
+              onClick={() => onDetail(item)}
+              className="rounded-full border border-black bg-background px-3 py-1 text-xs font-medium hover:bg-zinc-200"
+            >
+              Detail
+            </button>
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -174,9 +195,11 @@ function TabContentPosts({
 function TabContentVideos({
   items,
   emptyMessage,
+  onDetail,
 }: {
   items: ProfileMediaWithUrl[];
   emptyMessage: string;
+  onDetail: (item: ProfileMediaWithUrl) => void;
 }) {
   if (items.length === 0) {
     return (
@@ -193,9 +216,18 @@ function TabContentVideos({
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {items.map((item) => (
-        <div key={item.id} className="overflow-hidden rounded-xl border border-[color:var(--border-subtle)] bg-zinc-100">
+        <div key={item.id} className="flex flex-col overflow-hidden rounded-xl border border-[color:var(--border-subtle)] bg-zinc-100">
           <video src={item.publicUrl} controls className="w-full" />
-          {item.caption && <p className="p-2 text-sm text-zinc-600">{item.caption}</p>}
+          <div className="flex items-center justify-between gap-2 p-2">
+            {item.caption && <p className="min-w-0 truncate text-sm text-zinc-600">{item.caption}</p>}
+            <button
+              type="button"
+              onClick={() => onDetail(item)}
+              className="shrink-0 rounded-full border border-black bg-background px-3 py-1 text-xs font-medium hover:bg-zinc-200"
+            >
+              Detail
+            </button>
+          </div>
         </div>
       ))}
     </div>
@@ -205,9 +237,11 @@ function TabContentVideos({
 function TabContentCollabs({
   items,
   emptyMessage,
+  onDetail,
 }: {
   items: PublishedCollab[];
   emptyMessage: string;
+  onDetail: (item: PublishedCollab) => void;
 }) {
   if (items.length === 0) {
     return (
@@ -226,10 +260,19 @@ function TabContentCollabs({
       {items.map((c) => (
         <li
           key={c.id}
-          className="rounded-xl border border-[color:var(--border-subtle)] bg-background p-4"
+          className="flex items-center justify-between gap-3 rounded-xl border border-[color:var(--border-subtle)] bg-background p-4"
         >
-          <p className="font-medium text-foreground">{c.title}</p>
-          {c.summary && <p className="mt-1 text-sm text-zinc-600">{c.summary}</p>}
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-foreground">{c.title}</p>
+            {c.summary && <p className="mt-1 text-sm text-zinc-600">{c.summary}</p>}
+          </div>
+          <button
+            type="button"
+            onClick={() => onDetail(c)}
+            className="shrink-0 rounded-full border border-black bg-background px-3 py-1 text-xs font-medium hover:bg-zinc-200"
+          >
+            Detail
+          </button>
         </li>
       ))}
     </ul>
