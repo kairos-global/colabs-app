@@ -49,7 +49,7 @@ export function ProfileView({ data }: ProfileViewProps) {
       {uploadOpen && <UploadProfileMediaModal onClose={() => setUploadOpen(false)} />}
 
       {/* Profile card */}
-      <section className="rounded-2xl border border-[color:var(--border-subtle)] bg-sidebar p-6">
+      <section className="rounded-2xl border border-[color:var(--border-subtle)] bg-zinc-100/80 p-6">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
           <div className="shrink-0">
             {profile?.avatar_url ? (
@@ -59,43 +59,50 @@ export function ProfileView({ data }: ProfileViewProps) {
                 className="h-24 w-24 rounded-full border border-[color:var(--border-subtle)] object-cover sm:h-28 sm:w-28"
               />
             ) : (
-              <div className="flex h-24 w-24 items-center justify-center rounded-full border border-[color:var(--border-subtle)] bg-zinc-200 text-center text-xs text-zinc-500 sm:h-28 sm:w-28">
+              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-black text-center text-xs font-medium text-white sm:h-28 sm:w-28">
                 profile picture
               </div>
             )}
           </div>
           <div className="min-w-0 flex-1 space-y-1">
             <p className="text-base font-medium text-foreground">
-              {profile?.display_name?.trim() || "Name"}
+              {profile?.display_name?.trim() || "name"}
             </p>
             <p className="text-sm text-zinc-600">
-              {profile?.bio?.trim() || "Bio"}
+              {profile?.bio?.trim() || "bio"}
             </p>
             <p className="text-sm text-zinc-600">
-              {profile?.url?.trim() || "URL"}
+              {profile?.url?.trim() || "url"}
             </p>
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs: unified pill, cyan active */}
         <div className="mt-6 border-t border-[color:var(--border-subtle)] pt-4">
-          <div className="flex gap-1">
+          <div
+            className="flex overflow-hidden rounded-full border border-[color:var(--border-subtle)] bg-zinc-200/80"
+            role="tablist"
+          >
             {(
               [
                 { id: "posts" as const, label: "Posts" },
                 { id: "video" as const, label: "Video" },
                 { id: "collabs" as const, label: "Collabs" },
               ] as const
-            ).map((tab) => (
+            ).map((tab, i) => (
               <button
                 key={tab.id}
                 type="button"
+                role="tab"
+                aria-selected={activeTab === tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`rounded-full px-4 py-1.5 text-sm font-medium ${
+                className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
+                  i === 0 ? "rounded-l-full" : ""
+                } ${i === 2 ? "rounded-r-full" : ""} ${
                   activeTab === tab.id
-                    ? "bg-black text-white"
-                    : "bg-background text-foreground hover:bg-zinc-100"
-                }`}
+                    ? "bg-[#00cefc] text-white"
+                    : "bg-white text-foreground hover:bg-zinc-50"
+                } ${i < 2 && activeTab !== tab.id ? "border-r border-[color:var(--border-subtle)]" : ""}`}
               >
                 {tab.label}
               </button>
@@ -104,13 +111,22 @@ export function ProfileView({ data }: ProfileViewProps) {
 
           <div className="mt-4 min-h-[120px]">
             {activeTab === "posts" && (
-              <TabContentPosts items={posts} emptyMessage="No posts yet. Use Upload media to add image posts." />
+              <TabContentPosts
+                items={posts}
+                emptyMessage="display either posts, videos, or collabs here, whichever tab is selected"
+              />
             )}
             {activeTab === "video" && (
-              <TabContentVideos items={videos} emptyMessage="No videos yet. Use Upload media to add videos." />
+              <TabContentVideos
+                items={videos}
+                emptyMessage="display either posts, videos, or collabs here, whichever tab is selected"
+              />
             )}
             {activeTab === "collabs" && (
-              <TabContentCollabs items={publishedCollabs} emptyMessage="No published collabs yet. Publish a space you collaborate in to see it here." />
+              <TabContentCollabs
+                items={publishedCollabs}
+                emptyMessage="display either posts, videos, or collabs here, whichever tab is selected"
+              />
             )}
           </div>
         </div>
@@ -128,8 +144,13 @@ function TabContentPosts({
 }) {
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-[color:var(--border-subtle)] bg-background/60 p-6 text-center text-sm text-zinc-500">
-        {emptyMessage}
+      <div className="flex flex-col gap-3">
+        <div className="rounded-xl border border-[color:var(--border-subtle)] bg-zinc-200/60 p-6 text-center text-sm text-zinc-600">
+          {emptyMessage}
+        </div>
+        <div className="rounded-xl border border-[color:var(--border-subtle)] bg-zinc-200/60 p-6 text-center text-sm text-zinc-600">
+          {emptyMessage}
+        </div>
       </div>
     );
   }
@@ -159,8 +180,13 @@ function TabContentVideos({
 }) {
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-[color:var(--border-subtle)] bg-background/60 p-6 text-center text-sm text-zinc-500">
-        {emptyMessage}
+      <div className="flex flex-col gap-3">
+        <div className="rounded-xl border border-[color:var(--border-subtle)] bg-zinc-200/60 p-6 text-center text-sm text-zinc-600">
+          {emptyMessage}
+        </div>
+        <div className="rounded-xl border border-[color:var(--border-subtle)] bg-zinc-200/60 p-6 text-center text-sm text-zinc-600">
+          {emptyMessage}
+        </div>
       </div>
     );
   }
@@ -185,8 +211,13 @@ function TabContentCollabs({
 }) {
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-[color:var(--border-subtle)] bg-background/60 p-6 text-center text-sm text-zinc-500">
-        {emptyMessage}
+      <div className="flex flex-col gap-3">
+        <div className="rounded-xl border border-[color:var(--border-subtle)] bg-zinc-200/60 p-6 text-center text-sm text-zinc-600">
+          {emptyMessage}
+        </div>
+        <div className="rounded-xl border border-[color:var(--border-subtle)] bg-zinc-200/60 p-6 text-center text-sm text-zinc-600">
+          {emptyMessage}
+        </div>
       </div>
     );
   }
