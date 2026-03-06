@@ -274,9 +274,16 @@ export async function uploadSpaceMedia(spaceId: string, formData: FormData): Pro
     if (!profile || !supabase) return { ok: false, error: "Not allowed" };
     const file = formData.get("file") as File | null;
     if (!file || file.size === 0) return { ok: false, error: "No file" };
+    const formType = formData.get("type");
     const type =
-      formData.get("type") === "video" || file.type.startsWith("video/") ? "video" : "image";
-    const ext = file.name.split(".").pop() || (type === "video" ? "mp4" : "jpg");
+      formType === "video" || file.type.startsWith("video/")
+        ? "video"
+        : formType === "audio" || file.type.startsWith("audio/")
+        ? "audio"
+        : "image";
+    const ext =
+      file.name.split(".").pop() ||
+      (type === "video" ? "mp4" : type === "audio" ? "mp3" : "jpg");
     const path = `spaces/${spaceId}/media/${crypto.randomUUID()}.${ext}`;
     const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, file, {
       contentType: file.type,

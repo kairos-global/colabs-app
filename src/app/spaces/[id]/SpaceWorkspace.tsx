@@ -292,7 +292,8 @@ function SpaceMediaQuadrant({
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(media[0]?.id ?? null);
-  const [filter, setFilter] = useState<"all" | "image" | "video">("all");
+  const [filter, setFilter] = useState<"all" | "image" | "video" | "audio">("all");
+  const [error, setError] = useState<string | null>(null);
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -300,20 +301,33 @@ function SpaceMediaQuadrant({
 
     setUploading(true);
     let anyOk = false;
+    let lastError: string | null = null;
 
     for (const file of files) {
       const formData = new FormData();
       formData.set("file", file);
-      formData.set("type", file.type.startsWith("video/") ? "video" : "image");
+      const kind = file.type.startsWith("video/")
+        ? "video"
+        : file.type.startsWith("audio/")
+        ? "audio"
+        : "image";
+      formData.set("type", kind);
       const result = await uploadSpaceMedia(spaceId, formData);
       if (result.ok) {
         anyOk = true;
+      } else {
+        lastError = result.error ?? "Upload failed";
       }
     }
 
     setUploading(false);
     e.target.value = "";
-    if (anyOk) onRefresh();
+    if (anyOk) {
+      setError(null);
+      onRefresh();
+    } else if (lastError) {
+      setError(lastError);
+    }
   }
 
   const filteredMedia =
@@ -377,13 +391,27 @@ function SpaceMediaQuadrant({
                   {media.filter((m) => m.type === "video").length}
                 </span>
               </button>
+              <button
+                type="button"
+                onClick={() => setFilter("audio")}
+                className={`flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left ${
+                  filter === "audio"
+                    ? "bg-zinc-900 text-zinc-50"
+                    : "text-zinc-700 hover:bg-zinc-100"
+                }`}
+              >
+                <span>Audio</span>
+                <span className="text-[10px] text-zinc-400">
+                  {media.filter((m) => m.type === "audio").length}
+                </span>
+              </button>
             </div>
           </div>
           <div className="hidden md:block">
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*,video/*"
+              accept="image/*,video/*,audio/*"
               multiple
               className="sr-only"
               onChange={handleUpload}
@@ -414,7 +442,9 @@ function SpaceMediaQuadrant({
                   ? "All items"
                   : filter === "image"
                   ? "Photos"
-                  : "Video"}
+                  : filter === "video"
+                  ? "Video"
+                  : "Audio"}
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto text-xs">
                 <div className="grid grid-cols-[auto_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 border-b border-zinc-200 bg-zinc-50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
@@ -441,8 +471,10 @@ function SpaceMediaQuadrant({
                       <span className="flex h-6 w-6 items-center justify-center overflow-hidden rounded border border-zinc-200 bg-zinc-50">
                         {m.type === "image" ? (
                           <span className="h-4 w-4 rounded bg-zinc-300" />
-                        ) : (
+                        ) : m.type === "video" ? (
                           <span className="h-4 w-4 rounded bg-zinc-900" />
+                        ) : (
+                          <span className="h-4 w-4 rounded bg-zinc-500" />
                         )}
                       </span>
                       <span className="truncate">{fileName}</span>
@@ -467,7 +499,7 @@ function SpaceMediaQuadrant({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*,video/*"
+                accept="image/*,video/*,audio/*"
                 multiple
                 className="sr-only"
                 onChange={handleUpload}
@@ -496,13 +528,17 @@ function SpaceMediaQuadrant({
                   className="h-full w-full object-contain"
                 />
               </div>
-            ) : (
+            ) : selected.type === "video" ? (
               <div className="mt-1 aspect-[4/3] overflow-hidden rounded border border-zinc-200 bg-zinc-50">
                 <video
                   src={selected.publicUrl}
                   controls
                   className="h-full w-full object-contain"
                 />
+              </div>
+            ) : (
+              <div className="mt-1 overflow-hidden rounded border border-zinc-200 bg-zinc-50 p-2">
+                <audio src={selected.publicUrl} controls className="w-full" />
               </div>
             )}
           </div>
@@ -523,6 +559,11 @@ function SpaceMediaQuadrant({
                 Open in new tab
               </a>
             </div>
+          )}
+          {error && (
+            <p className="mt-2 text-[10px] text-red-600">
+              {error}
+            </p>
           )}
         </div>
       </div>

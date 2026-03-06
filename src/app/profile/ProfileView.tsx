@@ -204,12 +204,21 @@ function TabContentVideos({
     );
   }
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {items.map((item) => (
-        <div key={item.id} className="flex flex-col overflow-hidden rounded-xl border border-[color:var(--border-subtle)] bg-zinc-100">
-          <video src={item.publicUrl} controls className="w-full" />
-          <div className="flex items-center justify-between gap-2 p-2">
-            {item.caption && <p className="min-w-0 truncate text-sm text-zinc-600">{item.caption}</p>}
+        <div
+          key={item.id}
+          className="flex flex-col overflow-hidden rounded-xl border border-[color:var(--border-subtle)] bg-zinc-100"
+        >
+          <a
+            href={item.publicUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block aspect-square overflow-hidden"
+          >
+            <video src={item.publicUrl} className="h-full w-full object-cover" />
+          </a>
+          <div className="flex justify-center p-2">
             <button
               type="button"
               onClick={() => onDetail(item)}
@@ -241,25 +250,27 @@ function TabContentCollabs({
     );
   }
   return (
-    <ul className="space-y-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {items.map((c) => (
-        <li
+        <div
           key={c.id}
-          className="flex items-center justify-between gap-3 rounded-xl border border-[color:var(--border-subtle)] bg-background p-4"
+          className="flex flex-col justify-between gap-2 rounded-xl border border-[color:var(--border-subtle)] bg-zinc-100 p-4"
         >
           <div className="min-w-0 flex-1">
             <p className="font-medium text-foreground">{c.title}</p>
             {c.summary && <p className="mt-1 text-sm text-zinc-600">{c.summary}</p>}
           </div>
-          <button
-            type="button"
-            onClick={() => onDetail(c)}
-            className="shrink-0 rounded-full border border-black bg-background px-3 py-1 text-xs font-medium hover:bg-zinc-200"
-          >
-            Detail
-          </button>
-        </li>
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => onDetail(c)}
+              className="shrink-0 rounded-full border border-black bg-background px-3 py-1 text-xs font-medium hover:bg-zinc-200"
+            >
+              Detail
+            </button>
+          </div>
+        </div>
       ))}
-    </ul>
+    </div>
   );
 }
