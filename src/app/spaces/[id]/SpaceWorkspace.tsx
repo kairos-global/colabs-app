@@ -376,9 +376,9 @@ function SpaceMediaQuadrant({
       <div className="mt-1 text-[10px] text-zinc-500">
         {formatBytes(storage.usedBytes)} of {formatBytes(storage.maxBytes)} used
       </div>
-      <div className="mt-2 flex flex-1 min-h-0 flex-col gap-3 md:flex-row">
+      <div className="mt-2 flex min-w-0 flex-1 flex-col gap-3 md:flex-row">
         {/* Left column: library + file list stacked in one view */}
-        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden md:max-w-[280px] md:flex-none">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden md:max-w-[280px] md:flex-none">
           <div className="flex w-full shrink-0 flex-row items-start gap-2">
             <div className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white/70 p-1.5">
               <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
@@ -529,7 +529,7 @@ function SpaceMediaQuadrant({
           </div>
         </div>
 
-        <div className="mt-2 flex min-h-0 w-full min-w-0 shrink-0 flex-col overflow-hidden rounded-lg border border-zinc-300 bg-white/80 p-2 text-xs md:mt-0 md:w-40 md:max-w-[13rem] lg:w-52">
+        <div className="mt-2 flex min-h-0 min-w-0 w-full max-w-full shrink flex-col overflow-hidden rounded-lg border border-zinc-300 bg-white/80 p-2 text-xs md:mt-0 md:w-40 md:max-w-[13rem] lg:w-52">
           <div className="shrink-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
               preview
@@ -541,19 +541,19 @@ function SpaceMediaQuadrant({
                 Select a file to preview it here.
               </p>
             ) : selected.type === "image" ? (
-              <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden rounded border border-zinc-200 bg-zinc-50">
+              <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded border border-zinc-200 bg-zinc-50">
                 <img
                   src={selected.publicUrl}
                   alt={selected.title ?? "Media"}
-                  className="h-full w-full object-contain"
+                  className="absolute inset-0 h-full w-full object-contain"
                 />
               </div>
             ) : selected.type === "video" ? (
-              <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden rounded border border-zinc-200 bg-zinc-50">
+              <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded border border-zinc-200 bg-zinc-50">
                 <video
                   src={selected.publicUrl}
                   controls
-                  className="h-full w-full object-contain"
+                  className="absolute inset-0 h-full w-full object-contain"
                 />
               </div>
             ) : (
@@ -563,7 +563,7 @@ function SpaceMediaQuadrant({
             )}
           </div>
           {selected && (
-            <div className="mt-2 space-y-0.5">
+            <div className="mt-2 min-w-0 shrink-0 space-y-0.5 overflow-hidden">
               <p className="truncate text-[11px] font-medium">
                 {selected.title?.trim() ||
                   selected.storage_path.split("/").pop() ||
@@ -574,7 +574,7 @@ function SpaceMediaQuadrant({
                 href={selected.publicUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-1 inline-flex items-center justify-center rounded border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-[10px] font-medium text-zinc-700 hover:bg-zinc-100"
+                className="mt-1 inline-block max-w-full truncate rounded border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-[10px] font-medium text-zinc-700 hover:bg-zinc-100"
               >
                 Open in new tab
               </a>
