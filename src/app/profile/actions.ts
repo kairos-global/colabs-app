@@ -108,12 +108,25 @@ export async function updateProfileAction(formData: FormData): Promise<{ ok: boo
   return { ok: true };
 }
 
+function toErrorString(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === "object" && "message" in err && typeof (err as { message: unknown }).message === "string") {
+    return (err as { message: string }).message;
+  }
+  return String(err);
+}
+
 export async function uploadProfileMediaAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
   try {
     const { userId } = await auth();
     if (!userId) return { ok: false, error: "Not signed in" };
     const supabase = getServerSupabaseClient();
-    const profile = await getProfileByClerkId(supabase, userId);
+    let profile: Awaited<ReturnType<typeof getProfileByClerkId>>;
+    try {
+      profile = await getProfileByClerkId(supabase, userId);
+    } catch (e) {
+      return { ok: false, error: toErrorString(e) };
+    }
     if (!profile) return { ok: false, error: "Profile not found" };
 
     const type = formData.get("type") as string;
@@ -124,17 +137,22 @@ export async function uploadProfileMediaAction(formData: FormData): Promise<{ ok
     if (size === 0) return { ok: false, error: "File is empty" };
     const caption = (formData.get("caption") as string)?.trim() || null;
 
-    const ext = (file.name && file.name.split(".").pop()) || (type === "video" ? "mp4" : "jpg");
+    const rawExt = file.name?.split(".").pop()?.toLowerCase();
+    const ext = rawExt && /^[a-z0-9]+$/.test(rawExt) ? rawExt : type === "video" ? "mp4" : "jpg";
     const path = `${userId}/media/${crypto.randomUUID()}.${ext}`;
+
     const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, file, {
       contentType: file.type || (type === "video" ? "video/mp4" : "image/jpeg"),
     });
     if (uploadError) return { ok: false, error: uploadError.message };
 
-    await createProfileMedia(supabase, profile.id, { type: type as "image" | "video", storage_path: path, caption });
+    try {
+      await createProfileMedia(supabase, profile.id, { type: type as "image" | "video", storage_path: path, caption });
+    } catch (e) {
+      return { ok: false, error: toErrorString(e) };
+    }
     return { ok: true };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { ok: false, error: message };
+    return { ok: false, error: toErrorString(err) };
   }
 }
