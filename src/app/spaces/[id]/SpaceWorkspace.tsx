@@ -154,7 +154,7 @@ export function SpaceWorkspace({ spaceId, initialData }: SpaceWorkspaceProps) {
       </header>
 
       <main className="flex-1 p-4 md:p-6">
-        <div className="mx-auto grid h-full min-h-[60vh] max-w-5xl grid-cols-1 grid-rows-4 gap-0.5 overflow-hidden rounded-xl border-2 border-black bg-black md:grid-cols-2 md:grid-rows-2">
+        <div className="mx-auto grid h-full min-h-[60vh] max-w-5xl grid-cols-1 grid-rows-4 gap-0.5 overflow-hidden rounded-xl border-2 border-black bg-black md:grid-cols-2 md:grid-rows-2 [&>*]:min-h-0">
           <SpaceChatQuadrant
             spaceId={spaceId}
             messages={initialData.messages}
@@ -370,8 +370,8 @@ function SpaceMediaQuadrant({
     null;
 
   return (
-    <section className="flex min-h-0 flex-col bg-zinc-100 p-4">
-      <h2 className="text-sm font-semibold tracking-tight">view/upload media</h2>
+    <section className="flex min-h-0 flex-col overflow-hidden bg-zinc-100 p-4">
+      <h2 className="shrink-0 text-sm font-semibold tracking-tight">view/upload media</h2>
       <p className="text-xs text-zinc-500">photo/video/audio</p>
       <div className="mt-1 text-[10px] text-zinc-500">
         {formatBytes(storage.usedBytes)} of {formatBytes(storage.maxBytes)} used
@@ -529,19 +529,19 @@ function SpaceMediaQuadrant({
           </div>
         </div>
 
-        <div className="mt-2 flex min-h-0 min-w-0 shrink-0 flex-col overflow-hidden rounded-lg border border-zinc-300 bg-white/80 p-2 text-xs md:mt-0 md:w-40 lg:w-52">
+        <div className="mt-2 flex min-h-0 w-full min-w-0 shrink-0 flex-col overflow-hidden rounded-lg border border-zinc-300 bg-white/80 p-2 text-xs md:mt-0 md:w-40 md:max-w-[13rem] lg:w-52">
           <div className="shrink-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
               preview
             </p>
           </div>
-          <div className="mt-1 min-h-0 flex-1 overflow-hidden">
+          <div className="mt-1 flex min-h-0 flex-1 flex-col overflow-hidden">
             {!selected ? (
               <p className="mt-4 text-[11px] text-zinc-500">
                 Select a file to preview it here.
               </p>
             ) : selected.type === "image" ? (
-              <div className="flex h-full w-full items-center justify-center overflow-hidden rounded border border-zinc-200 bg-zinc-50">
+              <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded border border-zinc-200 bg-zinc-50">
                 <img
                   src={selected.publicUrl}
                   alt={selected.title ?? "Media"}
@@ -549,7 +549,7 @@ function SpaceMediaQuadrant({
                 />
               </div>
             ) : selected.type === "video" ? (
-              <div className="flex h-full w-full items-center justify-center overflow-hidden rounded border border-zinc-200 bg-zinc-50">
+              <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded border border-zinc-200 bg-zinc-50">
                 <video
                   src={selected.publicUrl}
                   controls
