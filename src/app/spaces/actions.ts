@@ -173,10 +173,16 @@ export async function getSpacePageData(spaceId: string): Promise<SpacePageData> 
     ]);
 
     const mediaRows = mediaRes.data ?? [];
-    const mediaWithUrls: SpaceMedia[] = mediaRows.map((row) => ({
-      ...row,
-      publicUrl: supabase.storage.from(BUCKET).getPublicUrl(row.storage_path).data.publicUrl,
-    }));
+    const mediaWithUrls: SpaceMedia[] = mediaRows.map((row) => {
+      const bucket =
+        row.storage_path.startsWith("spaces/")
+          ? PROFILE_MEDIA_BUCKET
+          : SPACE_MEDIA_BUCKET;
+      return {
+        ...row,
+        publicUrl: supabase.storage.from(bucket).getPublicUrl(row.storage_path).data.publicUrl,
+      };
+    });
     const usedBytes =
       mediaRows.reduce((sum, row) => sum + (row.size_bytes ?? 0), 0) ?? 0;
 
@@ -198,7 +204,10 @@ export async function getSpacePageData(spaceId: string): Promise<SpacePageData> 
   }
 }
 
-const BUCKET = "profile-media";
+/** Profile media (avatars, profile gallery). Do not use for space media. */
+const PROFILE_MEDIA_BUCKET = "profile-media";
+/** Space media (per-space uploads). Paths: {spaceId}/images|video|audio/{uuid}.{ext} */
+const SPACE_MEDIA_BUCKET = "space-media";
 
 export type CreateMessageResult = { ok: true } | { ok: false; error: string };
 export type CreateBulletinResult = { ok: true } | { ok: false; error: string };
@@ -514,7 +523,7 @@ export async function uploadSpaceMedia(spaceId: string, formData: FormData): Pro
     const file = formData.get("file") as File | null;
     if (!file || file.size === 0) return { ok: false, error: "No file" };
     const formType = formData.get("type");
-    const type =
+    const type: "image" | "video" | "audio" =
       formType === "video" || file.type.startsWith("video/")
         ? "video"
         : formType === "audio" || file.type.startsWith("audio/")
@@ -523,11 +532,12 @@ export async function uploadSpaceMedia(spaceId: string, formData: FormData): Pro
     const ext =
       file.name.split(".").pop() ||
       (type === "video" ? "mp4" : type === "audio" ? "mp3" : "jpg");
-    // Enforce a simple per-space storage cap for now (Starter plan).
+    const safeExt = /^[a-z0-9]+$/i.test(ext ?? "") ? ext : type === "video" ? "mp4" : type === "audio" ? "mp3" : "jpg";
+    // Per-file cap (2 GB for Starter)
     if (file.size > STARTER_SPACE_BYTES) {
       return {
         ok: false,
-        error: "This file is larger than your current 2 GB space limit.",
+        error: "This file is larger than your current 2 GB per-file limit.",
       };
     }
     const { data: currentMedia, error: usageError } = await supabase
@@ -545,10 +555,12 @@ export async function uploadSpaceMedia(spaceId: string, formData: FormData): Pro
       };
     }
 
-    const path = `spaces/${spaceId}/media/${crypto.randomUUID()}.${ext}`;
-    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, file, {
-      contentType: file.type,
-    });
+    // space-media bucket: {spaceId}/images|video|audio/{uuid}.{ext}
+    const folder = type === "image" ? "images" : type;
+    const path = `${spaceId}/${folder}/${crypto.randomUUID()}.${safeExt}`;
+    const { error: uploadError } = await supabase.storage
+      .from(SPACE_MEDIA_BUCKET)
+      .upload(path, file, { contentType: file.type });
     if (uploadError) return { ok: false, error: uploadError.message };
     const title = (formData.get("title") as string)?.trim() || null;
     const { error: insertError } = await supabase.from("space_media").insert({
@@ -563,6 +575,7 @@ export async function uploadSpaceMedia(spaceId: string, formData: FormData): Pro
     if (insertError) return { ok: false, error: insertError.message };
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: message };
   }
 }

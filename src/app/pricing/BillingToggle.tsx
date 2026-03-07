@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 
 export type BillingMode = "annual" | "monthly";
 
@@ -64,6 +65,7 @@ export function BillingToggle({ mode, onChange }: BillingToggleProps) {
 
 export function BillingPricingSection() {
   const [mode, setMode] = useState<BillingMode>("annual");
+  const { isSignedIn } = useAuth();
 
   const annual = mode === "annual";
   const proPrice = annual ? 8 : 10;
@@ -134,13 +136,22 @@ export function BillingPricingSection() {
             </li>
           </ul>
 
-          <Link
-            href="/sign-up"
-            data-plan="starter"
-            className="mt-10 block w-full rounded-[10px] border border-black bg-black px-6 py-3.5 text-center text-sm font-medium text-white transition hover:bg-transparent hover:text-black"
-          >
-            Get started free
-          </Link>
+          {isSignedIn ? (
+            <div
+              className="mt-10 flex w-full items-center justify-center rounded-[10px] border border-zinc-300 bg-zinc-100 px-6 py-3.5 text-center text-sm font-medium text-zinc-600"
+              aria-label="You are on the Starter plan"
+            >
+              You&apos;re on this plan
+            </div>
+          ) : (
+            <Link
+              href="/sign-up"
+              data-plan="starter"
+              className="mt-10 block w-full rounded-[10px] border border-black bg-black px-6 py-3.5 text-center text-sm font-medium text-white transition hover:bg-transparent hover:text-black"
+            >
+              Get started free
+            </Link>
+          )}
         </section>
 
         {/* Pro */}

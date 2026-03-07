@@ -1,0 +1,12 @@
+---
+description: Supabase migrations – new changes go in new files only
+globs: supabase/**/*.sql
+alwaysApply: false
+---
+
+# Database migrations
+
+- **Always put database additions in a new file.** Create a new SQL file for each migration (e.g. `supabase/YYYY-MM-DD_short_description.sql`).
+- **Never edit previous days' SQL files.** Do not add to or modify existing migration files. Existing files are historical; new changes get a new file.
+
+Example: adding a new column or table → create `supabase/2026-03-07_add_xyz.sql` (or the current date), do not edit `2026-03-06_*.sql` or `schema.sql` for the new change.

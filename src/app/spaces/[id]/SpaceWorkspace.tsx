@@ -311,7 +311,7 @@ function SpaceMediaQuadrant({
     setUploading(true);
     setError(null);
     setUploadProgress({ current: 0, total: files.length });
-    let anyOk = false;
+    let successCount = 0;
     let lastError: string | null = null;
 
     try {
@@ -329,17 +329,12 @@ function SpaceMediaQuadrant({
         try {
           const result = await uploadSpaceMedia(spaceId, formData);
           if (result.ok) {
-            anyOk = true;
+            successCount += 1;
           } else {
             lastError = result.error ?? "Upload failed";
-            // eslint-disable-next-line no-console
-            console.error("uploadSpaceMedia error", result.error);
           }
         } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          lastError = message;
-          // eslint-disable-next-line no-console
-          console.error("uploadSpaceMedia threw", message);
+          lastError = err instanceof Error ? err.message : String(err);
         }
       }
     } finally {
@@ -352,9 +347,13 @@ function SpaceMediaQuadrant({
       }
     }
 
-    if (anyOk) {
-      setError(null);
+    if (successCount > 0) {
       onRefresh();
+      if (successCount < files.length && lastError) {
+        setError(`${successCount} of ${files.length} uploaded. Last error: ${lastError}`);
+      } else {
+        setError(null);
+      }
     } else if (lastError) {
       setError(lastError);
     }
