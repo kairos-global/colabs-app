@@ -83,7 +83,7 @@ export function ProfileView({ data }: ProfileViewProps) {
         {/* Tabs: unified pill, cyan active */}
         <div className="mt-5 border-t border-[color:var(--border-subtle)] pt-4 md:mt-6">
           <div
-            className="flex overflow-hidden rounded-full border border-[color:var(--border-subtle)] bg-zinc-200/80"
+            className="flex overflow-hidden rounded-lg border border-[color:var(--border-subtle)] bg-zinc-200/80"
             role="tablist"
           >
             {(
@@ -100,8 +100,8 @@ export function ProfileView({ data }: ProfileViewProps) {
                 aria-selected={activeTab === tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
-                  i === 0 ? "rounded-l-full" : ""
-                } ${i === 2 ? "rounded-r-full" : ""} ${
+                  i === 0 ? "rounded-l-lg" : ""
+                } ${i === 2 ? "rounded-r-lg" : ""} ${
                   activeTab === tab.id
                     ? "bg-[#00cefc] text-white"
                     : "bg-white text-foreground hover:bg-zinc-50"
@@ -250,7 +250,7 @@ function TabContentCollabs({
     );
   }
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {items.map((c) => (
         <div
           key={c.id}
