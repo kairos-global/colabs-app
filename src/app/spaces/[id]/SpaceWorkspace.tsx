@@ -535,25 +535,25 @@ function SpaceMediaQuadrant({
               preview
             </p>
           </div>
-          <div className="mt-1 flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="mt-1 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {!selected ? (
               <p className="mt-4 text-[11px] text-zinc-500">
                 Select a file to preview it here.
               </p>
             ) : selected.type === "image" ? (
-              <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded border border-zinc-200 bg-zinc-50">
+              <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden rounded border border-zinc-200 bg-zinc-50">
                 <img
                   src={selected.publicUrl}
                   alt={selected.title ?? "Media"}
-                  className="max-h-full max-w-full object-contain"
+                  className="h-full w-full object-contain"
                 />
               </div>
             ) : selected.type === "video" ? (
-              <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded border border-zinc-200 bg-zinc-50">
+              <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden rounded border border-zinc-200 bg-zinc-50">
                 <video
                   src={selected.publicUrl}
                   controls
-                  className="max-h-full max-w-full object-contain"
+                  className="h-full w-full object-contain"
                 />
               </div>
             ) : (
