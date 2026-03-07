@@ -379,8 +379,8 @@ function SpaceMediaQuadrant({
       <div className="mt-2 flex flex-1 min-h-0 flex-col gap-3 md:flex-row">
         {/* Left column: library + file list stacked in one view */}
         <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden md:max-w-[280px] md:flex-none">
-          <div className="flex shrink-0 flex-row flex-wrap items-start gap-2 sm:flex-nowrap">
-            <div className="rounded-lg border border-zinc-300 bg-white/70 p-1.5">
+          <div className="flex w-full shrink-0 flex-row items-start gap-2">
+            <div className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white/70 p-1.5">
               <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
                 library
               </p>
@@ -529,35 +529,35 @@ function SpaceMediaQuadrant({
           </div>
         </div>
 
-        <div className="mt-2 flex shrink-0 flex-col rounded-lg border border-zinc-300 bg-white/80 p-2 text-xs md:mt-0 md:w-40 lg:w-52">
-          <div className="flex items-center justify-between">
+        <div className="mt-2 flex min-h-0 min-w-0 shrink-0 flex-col overflow-hidden rounded-lg border border-zinc-300 bg-white/80 p-2 text-xs md:mt-0 md:w-40 lg:w-52">
+          <div className="shrink-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
               preview
             </p>
           </div>
-          <div className="mt-1 flex-1">
+          <div className="mt-1 min-h-0 flex-1 overflow-hidden">
             {!selected ? (
               <p className="mt-4 text-[11px] text-zinc-500">
                 Select a file to preview it here.
               </p>
             ) : selected.type === "image" ? (
-              <div className="mt-1 aspect-[4/3] overflow-hidden rounded border border-zinc-200 bg-zinc-50">
+              <div className="flex h-full w-full items-center justify-center overflow-hidden rounded border border-zinc-200 bg-zinc-50">
                 <img
                   src={selected.publicUrl}
                   alt={selected.title ?? "Media"}
-                  className="h-full w-full object-contain"
+                  className="max-h-full max-w-full object-contain"
                 />
               </div>
             ) : selected.type === "video" ? (
-              <div className="mt-1 aspect-[4/3] overflow-hidden rounded border border-zinc-200 bg-zinc-50">
+              <div className="flex h-full w-full items-center justify-center overflow-hidden rounded border border-zinc-200 bg-zinc-50">
                 <video
                   src={selected.publicUrl}
                   controls
-                  className="h-full w-full object-contain"
+                  className="max-h-full max-w-full object-contain"
                 />
               </div>
             ) : (
-              <div className="mt-1 overflow-hidden rounded border border-zinc-200 bg-zinc-50 p-2">
+              <div className="overflow-hidden rounded border border-zinc-200 bg-zinc-50 p-2">
                 <audio src={selected.publicUrl} controls className="w-full" />
               </div>
             )}
