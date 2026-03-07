@@ -302,6 +302,16 @@ function SpaceMediaQuadrant({
   const [selectedId, setSelectedId] = useState<string | null>(media[0]?.id ?? null);
   const [filter, setFilter] = useState<"all" | "image" | "video" | "audio">("all");
   const [error, setError] = useState<string | null>(null);
+  const [fullscreenOpen, setFullscreenOpen] = useState(false);
+
+  useEffect(() => {
+    if (!fullscreenOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFullscreenOpen(false);
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [fullscreenOpen]);
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const input = e.target;
@@ -570,14 +580,17 @@ function SpaceMediaQuadrant({
                   "Untitled"}
               </p>
               <p className="text-[10px] text-zinc-500 capitalize">{selected.type}</p>
-              <a
-                href={selected.publicUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-1 inline-block max-w-full truncate rounded border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-[10px] font-medium text-zinc-700 hover:bg-zinc-100"
+              <button
+                type="button"
+                onClick={() => setFullscreenOpen(true)}
+                className="mt-1 inline-flex max-w-full items-center justify-center gap-1 rounded border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-[10px] font-medium text-zinc-700 hover:bg-zinc-100"
+                title="View fullscreen"
               >
-                Open in new tab
-              </a>
+                <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                </svg>
+                Fullscreen
+              </button>
             </div>
           )}
           {error && (
@@ -587,6 +600,50 @@ function SpaceMediaQuadrant({
           )}
         </div>
       </div>
+
+      {fullscreenOpen && selected && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setFullscreenOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Media fullscreen view"
+        >
+          <div
+            className="relative flex max-h-full max-w-full items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setFullscreenOpen(false)}
+              className="absolute -right-2 -top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-white shadow-lg hover:bg-zinc-700 md:-right-4 md:-top-4 md:h-10 md:w-10"
+              aria-label="Close fullscreen"
+            >
+              <svg className="h-5 w-5 md:h-6 md:w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+            {selected.type === "image" ? (
+              <img
+                src={selected.publicUrl}
+                alt={selected.title ?? "Media"}
+                className="max-h-[90vh] max-w-full object-contain"
+              />
+            ) : selected.type === "video" ? (
+              <video
+                src={selected.publicUrl}
+                controls
+                autoPlay
+                className="max-h-[90vh] max-w-full object-contain"
+              />
+            ) : (
+              <div className="rounded-lg bg-zinc-900 p-6">
+                <audio src={selected.publicUrl} controls autoPlay className="w-full min-w-[280px]" />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
