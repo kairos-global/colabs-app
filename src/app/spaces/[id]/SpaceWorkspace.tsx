@@ -377,161 +377,71 @@ function SpaceMediaQuadrant({
         {formatBytes(storage.usedBytes)} of {formatBytes(storage.maxBytes)} used
       </div>
       <div className="mt-2 flex flex-1 min-h-0 flex-col gap-3 md:flex-row">
-        <div className="flex shrink-0 flex-row gap-2 md:flex-col md:w-32">
-          <div className="rounded-lg border border-zinc-300 bg-white/70 p-1.5">
-            <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
-              library
-            </p>
-            <div className="mt-1 space-y-0.5 text-xs">
-              <button
-                type="button"
-                onClick={() => setFilter("all")}
-                className={`flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left ${
-                  filter === "all"
-                    ? "bg-zinc-900 text-zinc-50"
-                    : "text-zinc-700 hover:bg-zinc-100"
-                }`}
-              >
-                <span>All media</span>
-                <span className="text-[10px] text-zinc-400">{media.length}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilter("image")}
-                className={`flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left ${
-                  filter === "image"
-                    ? "bg-zinc-900 text-zinc-50"
-                    : "text-zinc-700 hover:bg-zinc-100"
-                }`}
-              >
-                <span>Photos</span>
-                <span className="text-[10px] text-zinc-400">
-                  {media.filter((m) => m.type === "image").length}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilter("video")}
-                className={`flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left ${
-                  filter === "video"
-                    ? "bg-zinc-900 text-zinc-50"
-                    : "text-zinc-700 hover:bg-zinc-100"
-                }`}
-              >
-                <span>Video</span>
-                <span className="text-[10px] text-zinc-400">
-                  {media.filter((m) => m.type === "video").length}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilter("audio")}
-                className={`flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left ${
-                  filter === "audio"
-                    ? "bg-zinc-900 text-zinc-50"
-                    : "text-zinc-700 hover:bg-zinc-100"
-                }`}
-              >
-                <span>Audio</span>
-                <span className="text-[10px] text-zinc-400">
-                  {media.filter((m) => m.type === "audio").length}
-                </span>
-              </button>
-            </div>
-          </div>
-          <div className="hidden md:block">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,video/*,audio/*"
-              multiple
-              className="sr-only"
-              onChange={handleUpload}
-              disabled={uploading}
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="mt-1 w-full rounded border border-black bg-[#00cefc] px-2 py-1 text-xs font-medium text-black disabled:opacity-50"
-            >
-              {uploading && uploadProgress
-                ? `Uploading ${uploadProgress.current}/${uploadProgress.total}…`
-                : uploading
-                ? "Uploading…"
-                : "Upload…"}
-            </button>
-          </div>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-zinc-300 bg-white/70">
-          {media.length === 0 ? (
-            <div className="flex h-full items-center justify-center px-4 py-6">
-              <p className="text-xs text-zinc-500">
-                No media yet. Upload files to see them here.
+        {/* Left column: library + file list stacked in one view */}
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden md:max-w-[280px] md:flex-none">
+          <div className="flex shrink-0 flex-row flex-wrap items-start gap-2 sm:flex-nowrap">
+            <div className="rounded-lg border border-zinc-300 bg-white/70 p-1.5">
+              <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                library
               </p>
-            </div>
-          ) : (
-            <div className="flex h-full flex-col">
-              <div className="border-b border-zinc-200 bg-zinc-50 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
-                {filter === "all"
-                  ? "All items"
-                  : filter === "image"
-                  ? "Photos"
-                  : filter === "video"
-                  ? "Video"
-                  : "Audio"}
+              <div className="mt-1 space-y-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setFilter("all")}
+                  className={`flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left ${
+                    filter === "all"
+                      ? "bg-zinc-900 text-zinc-50"
+                      : "text-zinc-700 hover:bg-zinc-100"
+                  }`}
+                >
+                  <span>All media</span>
+                  <span className="text-[10px] text-zinc-400">{media.length}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilter("image")}
+                  className={`flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left ${
+                    filter === "image"
+                      ? "bg-zinc-900 text-zinc-50"
+                      : "text-zinc-700 hover:bg-zinc-100"
+                  }`}
+                >
+                  <span>Photos</span>
+                  <span className="text-[10px] text-zinc-400">
+                    {media.filter((m) => m.type === "image").length}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilter("video")}
+                  className={`flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left ${
+                    filter === "video"
+                      ? "bg-zinc-900 text-zinc-50"
+                      : "text-zinc-700 hover:bg-zinc-100"
+                  }`}
+                >
+                  <span>Video</span>
+                  <span className="text-[10px] text-zinc-400">
+                    {media.filter((m) => m.type === "video").length}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilter("audio")}
+                  className={`flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left ${
+                    filter === "audio"
+                      ? "bg-zinc-900 text-zinc-50"
+                      : "text-zinc-700 hover:bg-zinc-100"
+                  }`}
+                >
+                  <span>Audio</span>
+                  <span className="text-[10px] text-zinc-400">
+                    {media.filter((m) => m.type === "audio").length}
+                  </span>
+                </button>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto text-xs">
-                <div className="grid grid-cols-[auto_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 border-b border-zinc-200 bg-zinc-50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
-                  <span />
-                  <span>Name</span>
-                  <span>Type</span>
-                  <span>Added</span>
-                </div>
-                {filteredMedia.map((m) => {
-                  const fileName =
-                    m.title?.trim() || m.storage_path.split("/").pop() || "Untitled";
-                  const isSelected = selected?.id === m.id;
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setSelectedId(m.id)}
-                      className={`grid w-full grid-cols-[auto_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 px-3 py-1.5 text-left ${
-                        isSelected
-                          ? "bg-[#00cefc]/20"
-                          : "odd:bg-white even:bg-zinc-50 hover:bg-zinc-100"
-                      }`}
-                    >
-                      <span className="flex h-6 w-6 items-center justify-center overflow-hidden rounded border border-zinc-200 bg-zinc-50">
-                        {m.type === "image" ? (
-                          <span className="h-4 w-4 rounded bg-zinc-300" />
-                        ) : m.type === "video" ? (
-                          <span className="h-4 w-4 rounded bg-zinc-900" />
-                        ) : (
-                          <span className="h-4 w-4 rounded bg-zinc-500" />
-                        )}
-                      </span>
-                      <span className="truncate">{fileName}</span>
-                      <span className="capitalize text-zinc-500">{m.type}</span>
-                      <span className="text-[10px] text-zinc-400">
-                        {new Date(m.created_at).toLocaleDateString()}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
             </div>
-          )}
-        </div>
-
-        <div className="mt-2 flex shrink-0 flex-col rounded-lg border border-zinc-300 bg-white/80 p-2 text-xs md:mt-0 md:w-40 lg:w-52">
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
-              preview
-            </p>
-            <div className="md:hidden">
+            <div className="flex shrink-0">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -545,7 +455,7 @@ function SpaceMediaQuadrant({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="rounded border border-black bg-[#00cefc] px-2 py-0.5 text-[10px] font-medium text-black disabled:opacity-50"
+                className="rounded border border-black bg-[#00cefc] px-2 py-1 text-xs font-medium text-black disabled:opacity-50"
               >
                 {uploading && uploadProgress
                   ? `Uploading ${uploadProgress.current}/${uploadProgress.total}…`
@@ -554,6 +464,76 @@ function SpaceMediaQuadrant({
                   : "Upload…"}
               </button>
             </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-zinc-300 bg-white/70">
+            {media.length === 0 ? (
+              <div className="flex h-full items-center justify-center px-4 py-6">
+                <p className="text-xs text-zinc-500">
+                  No media yet. Upload files to see them here.
+                </p>
+              </div>
+            ) : (
+              <div className="flex h-full flex-col">
+                <div className="border-b border-zinc-200 bg-zinc-50 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
+                  {filter === "all"
+                    ? "All items"
+                    : filter === "image"
+                    ? "Photos"
+                    : filter === "video"
+                    ? "Video"
+                    : "Audio"}
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto text-xs">
+                  <div className="grid grid-cols-[auto_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 border-b border-zinc-200 bg-zinc-50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                    <span />
+                    <span>Name</span>
+                    <span>Type</span>
+                    <span>Added</span>
+                  </div>
+                  {filteredMedia.map((m) => {
+                    const fileName =
+                      m.title?.trim() || m.storage_path.split("/").pop() || "Untitled";
+                    const isSelected = selected?.id === m.id;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setSelectedId(m.id)}
+                        className={`grid w-full grid-cols-[auto_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 px-3 py-1.5 text-left ${
+                          isSelected
+                            ? "bg-[#00cefc]/20"
+                            : "odd:bg-white even:bg-zinc-50 hover:bg-zinc-100"
+                        }`}
+                      >
+                        <span className="flex h-6 w-6 items-center justify-center overflow-hidden rounded border border-zinc-200 bg-zinc-50">
+                          {m.type === "image" ? (
+                            <span className="h-4 w-4 rounded bg-zinc-300" />
+                          ) : m.type === "video" ? (
+                            <span className="h-4 w-4 rounded bg-zinc-900" />
+                          ) : (
+                            <span className="h-4 w-4 rounded bg-zinc-500" />
+                          )}
+                        </span>
+                        <span className="truncate">{fileName}</span>
+                        <span className="capitalize text-zinc-500">{m.type}</span>
+                        <span className="text-[10px] text-zinc-400">
+                          {new Date(m.created_at).toLocaleDateString()}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-2 flex shrink-0 flex-col rounded-lg border border-zinc-300 bg-white/80 p-2 text-xs md:mt-0 md:w-40 lg:w-52">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+              preview
+            </p>
           </div>
           <div className="mt-1 flex-1">
             {!selected ? (
