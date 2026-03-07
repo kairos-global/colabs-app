@@ -516,10 +516,27 @@ export async function createSpaceTask(spaceId: string, title: string, descriptio
   }
 }
 
+function toErrorString(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === "object" && "message" in err && typeof (err as { message: unknown }).message === "string") {
+    return (err as { message: string }).message;
+  }
+  return String(err);
+}
+
 export async function uploadSpaceMedia(spaceId: string, formData: FormData): Promise<UploadSpaceMediaResult> {
   try {
-    const { profile, supabase } = await ensureSpaceAccess(spaceId);
+    let profile: Awaited<ReturnType<typeof ensureSpaceAccess>>["profile"];
+    let supabase: Awaited<ReturnType<typeof ensureSpaceAccess>>["supabase"];
+    try {
+      const access = await ensureSpaceAccess(spaceId);
+      profile = access.profile;
+      supabase = access.supabase;
+    } catch (e) {
+      return { ok: false, error: toErrorString(e) };
+    }
     if (!profile || !supabase) return { ok: false, error: "Not allowed" };
+
     const file = formData.get("file") as File | null;
     if (!file || file.size === 0) return { ok: false, error: "No file" };
     const formType = formData.get("type");
@@ -562,6 +579,7 @@ export async function uploadSpaceMedia(spaceId: string, formData: FormData): Pro
       .from(SPACE_MEDIA_BUCKET)
       .upload(path, file, { contentType: file.type });
     if (uploadError) return { ok: false, error: uploadError.message };
+
     const title = (formData.get("title") as string)?.trim() || null;
     const { error: insertError } = await supabase.from("space_media").insert({
       space_id: spaceId,
@@ -575,7 +593,6 @@ export async function uploadSpaceMedia(spaceId: string, formData: FormData): Pro
     if (insertError) return { ok: false, error: insertError.message };
     return { ok: true };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { ok: false, error: message };
+    return { ok: false, error: toErrorString(err) };
   }
 }
