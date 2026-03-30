@@ -10,7 +10,6 @@ const navItems = [
   { href: "/community", label: "Community" },
   { href: "/search", label: "Search" },
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/spaces", label: "Spaces" },
 ];
 
 export type ShellProfile = {
@@ -30,10 +29,7 @@ export function AppShell({ children, shellProfile }: AppShellProps) {
   const initial = displayLabel[0]?.toUpperCase() ?? "?";
 
   const linkClasses = (href: string) => {
-    const active =
-      href === "/spaces"
-        ? pathname === "/spaces" || pathname.startsWith("/spaces/")
-        : pathname === href;
+    const active = pathname === href;
     return [
       "flex items-center rounded-full px-3 py-1.5 text-sm md:text-base",
       active ? "bg-black text-white" : "hover:bg-zinc-100",
