@@ -26,10 +26,20 @@ export default async function DashboardPage() {
 
       <section className="grid gap-4 md:grid-cols-1">
         <div className="rounded-2xl border border-[color:var(--border-subtle)] bg-white/90 p-5">
-          <h2 className="text-sm font-semibold tracking-tight">Collaboration Spaces</h2>
-          <p className="mt-2 text-sm text-zinc-600">
-            Spaces are collaboration rooms where chat, media, bulletins, and tasks live together.
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 space-y-2">
+              <h2 className="text-sm font-semibold tracking-tight">Collaboration Spaces</h2>
+              <p className="text-sm text-zinc-600">
+                Spaces are collaboration rooms where chat, media, bulletins, and tasks live together.
+              </p>
+            </div>
+            <Link
+              href="/spaces"
+              className="inline-flex shrink-0 items-center justify-center self-start rounded-full border border-[color:var(--border-subtle)] bg-white px-4 py-1.5 text-sm font-medium text-zinc-900 hover:bg-zinc-50"
+            >
+              See all spaces →
+            </Link>
+          </div>
           {spaces.length === 0 ? (
             <div className="mt-4 rounded-xl border border-dashed border-[color:var(--border-subtle)] bg-background/60 p-4 text-xs text-zinc-500">
               No spaces yet. Use &quot;New space&quot; to start collaborating.
