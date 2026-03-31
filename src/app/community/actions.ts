@@ -3,6 +3,10 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { getServerSupabaseClient } from "@/lib/supabase/server";
 import { getOrCreateProfile, getProfileByClerkId } from "@/lib/profile";
+import {
+  getMaxSpacesForPlan,
+  getPlanTierForProfile,
+} from "@/lib/billing/limits";
 
 export type CreateListingResult =
   | { ok: true; listingId: string; spaceId: string }
@@ -67,6 +71,21 @@ export async function createCollaborationListing(input: {
         ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || null
         : null;
     const profile = await getOrCreateProfile(supabase, userId, displayName);
+    const tier = getPlanTierForProfile((profile as { plan_tier?: string | null }).plan_tier);
+    const maxSpaces = getMaxSpacesForPlan(tier);
+    const { count: spaceCount } = await supabase
+      .from("space_members")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", profile.id);
+    if ((spaceCount ?? 0) >= maxSpaces) {
+      return {
+        ok: false,
+        error:
+          tier === "starter"
+            ? `Starter plan allows up to ${maxSpaces} spaces. Upgrade to Pro for unlimited.`
+            : "Could not create listing.",
+      };
+    }
 
     // Create the underlying space owned by this profile.
     const { data: space, error: spaceError } = await supabase
@@ -231,7 +250,7 @@ export async function createListingApplication(input: {
 
     const { data: listing, error: listingError } = await supabase
       .from("collaboration_listings")
-      .select("id, space_id, owner_profile_id")
+      .select("id, space_id, owner_profile_id, status")
       .eq("id", input.listingId)
       .single();
     if (listingError || !listing) {
@@ -240,6 +259,10 @@ export async function createListingApplication(input: {
 
     if (listing.owner_profile_id === profile.id) {
       return { ok: false, error: "You cannot apply to your own listing" };
+    }
+
+    if ((listing as { status?: string }).status !== "open") {
+      return { ok: false, error: "This listing is no longer accepting applications" };
     }
 
     // Prevent duplicate applications from the same profile.
@@ -354,6 +377,83 @@ export async function listApplicationsForDashboard(): Promise<DashboardApplicati
     return { sent, received };
   } catch {
     return { sent: [], received: [] };
+  }
+}
+
+export async function searchCommunityListings(query: string): Promise<CommunityListingSummary[]> {
+  const q = query.trim();
+  if (!q) return [];
+  const all = await getCommunityListings();
+  const lower = q.toLowerCase();
+  return all.filter((row) => {
+    const title = row.title.toLowerCase();
+    const desc = (row.description ?? "").toLowerCase();
+    return title.includes(lower) || desc.includes(lower);
+  });
+}
+
+export type RespondToApplicationResult = { ok: true } | { ok: false; error: string };
+
+export async function respondToListingApplication(
+  applicationId: string,
+  status: "accepted" | "rejected"
+): Promise<RespondToApplicationResult> {
+  try {
+    const { userId } = await auth();
+    if (!userId) return { ok: false, error: "Not signed in" };
+    const supabase = getServerSupabaseClient();
+    const profile = await getProfileByClerkId(supabase, userId);
+    if (!profile) return { ok: false, error: "Profile not found" };
+
+    const { data: appRow, error: appErr } = await supabase
+      .from("collaboration_applications")
+      .select("id, listing_id, space_id, applicant_profile_id, status")
+      .eq("id", applicationId)
+      .single();
+    if (appErr || !appRow) return { ok: false, error: "Application not found" };
+
+    const { data: listingRow } = await supabase
+      .from("collaboration_listings")
+      .select("owner_profile_id")
+      .eq("id", appRow.listing_id)
+      .single();
+    const ownerId = (listingRow as { owner_profile_id: string } | null)?.owner_profile_id;
+    if (!ownerId || ownerId !== profile.id) {
+      return { ok: false, error: "Not allowed" };
+    }
+
+    const { error: updErr } = await supabase
+      .from("collaboration_applications")
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("id", applicationId);
+    if (updErr) return { ok: false, error: updErr.message };
+
+    if (status === "accepted") {
+      const spaceId = (appRow as { space_id: string }).space_id;
+      const applicantId = (appRow as { applicant_profile_id: string }).applicant_profile_id;
+      const { data: existing } = await supabase
+        .from("space_members")
+        .select("id")
+        .eq("space_id", spaceId)
+        .eq("user_id", applicantId)
+        .maybeSingle();
+      if (!existing) {
+        const { error: memErr } = await supabase.from("space_members").insert({
+          space_id: spaceId,
+          user_id: applicantId,
+          role: "member",
+          agreement_accepted: true,
+          agreement_timestamp: new Date().toISOString(),
+          agreement_version: "1.0",
+        });
+        if (memErr) return { ok: false, error: memErr.message };
+      }
+    }
+
+    return { ok: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: message };
   }
 }
 

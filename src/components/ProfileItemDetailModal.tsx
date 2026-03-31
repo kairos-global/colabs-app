@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { ProfileMediaWithUrl } from "@/app/profile/actions";
 import type { PublishedCollab } from "@/lib/profile";
 
@@ -50,6 +51,18 @@ export function ProfileItemDetailModal({ item, onClose }: ProfileItemDetailModal
                 className="w-full rounded-xl border border-[color:var(--border-subtle)]"
               />
             )}
+          </div>
+        )}
+        {item.type === "collab" && item.item.published_at && (
+          <div className="mt-4">
+            <Link
+              href={`/published/${item.item.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex rounded-full border border-black bg-[#00cefc] px-4 py-1.5 text-sm font-semibold text-black shadow-sm hover:bg-[#00b3dd]"
+            >
+              View published page
+            </Link>
           </div>
         )}
         <div className="mt-6 flex justify-end">

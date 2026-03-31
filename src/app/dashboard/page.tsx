@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getUserSpaces, listSpaceInvitesForDashboard } from "@/app/spaces/actions";
 import { listApplicationsForDashboard } from "@/app/community/actions";
+import { ApplicationRespondButtons } from "./ApplicationRespondButtons";
 import { NewSpaceButton } from "./NewSpaceButton";
 
 export default async function DashboardPage() {
@@ -199,23 +200,25 @@ export default async function DashboardPage() {
                     <p className="text-zinc-500">No applications received.</p>
                   ) : (
                     applications.received.map((app) => (
-                      <Link
+                      <div
                         key={app.id}
-                        href={`/community/listings/${app.listingId}`}
-                        className="flex items-center justify-between gap-2 rounded-lg border border-[color:var(--border-subtle)] bg-background/80 px-3 py-2 hover:bg-zinc-50"
+                        className="rounded-lg border border-[color:var(--border-subtle)] bg-background/80 px-3 py-2"
                       >
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">{app.title}</p>
-                          <p className="mt-0.5 truncate text-[11px] text-zinc-500">
-                            From {app.applicantName} · {app.status}
-                          </p>
+                        <div className="flex items-start justify-between gap-2">
+                          <Link href={`/community/listings/${app.listingId}`} className="min-w-0 flex-1">
+                            <p className="truncate font-medium">{app.title}</p>
+                            <p className="mt-0.5 truncate text-[11px] text-zinc-500">
+                              From {app.applicantName} · {app.status}
+                            </p>
+                          </Link>
+                          <span className="shrink-0 text-[10px] text-zinc-400">
+                            {app.createdAt
+                              ? new Date(app.createdAt).toLocaleDateString()
+                              : ""}
+                          </span>
                         </div>
-                        <span className="shrink-0 text-[10px] text-zinc-400">
-                          {app.createdAt
-                            ? new Date(app.createdAt).toLocaleDateString()
-                            : ""}
-                        </span>
-                      </Link>
+                        <ApplicationRespondButtons applicationId={app.id} status={app.status} />
+                      </div>
                     ))
                   )}
                 </div>

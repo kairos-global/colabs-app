@@ -7,6 +7,7 @@ export type Profile = {
   bio: string | null;
   avatar_url: string | null;
   url: string | null;
+  plan_tier?: string | null;
   created_at: string;
   updated_at: string | null;
 };

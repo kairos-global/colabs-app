@@ -9,6 +9,12 @@ import {
   createSpaceBulletin,
   createSpaceTask,
   uploadSpaceMedia,
+  publishSpace,
+  unpublishSpace,
+  setSpaceMediaVisibility,
+  setSpaceTaskVisibility,
+  setSpaceBulletinVisibility,
+  updateSpaceTaskStatus,
   type SpacePageData,
   type SpaceMessage,
   type SpaceMedia,
@@ -20,9 +26,15 @@ import { InviteCollaboratorsModal } from "@/components/InviteCollaboratorsModal"
 type SpaceWorkspaceProps = {
   spaceId: string;
   initialData: NonNullable<SpacePageData>;
+  initialPublication: {
+    id: string;
+    published_at: string | null;
+    visibility_scope: string | null;
+    title: string | null;
+  } | null;
 };
 
-export function SpaceWorkspace({ spaceId, initialData }: SpaceWorkspaceProps) {
+export function SpaceWorkspace({ spaceId, initialData, initialPublication }: SpaceWorkspaceProps) {
   const router = useRouter();
   const initialTitle =
     !initialData.title?.trim() || initialData.title.trim().toLowerCase() === "untitled"
@@ -34,6 +46,12 @@ export function SpaceWorkspace({ spaceId, initialData }: SpaceWorkspaceProps) {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [publishTitle, setPublishTitle] = useState(initialData.title || "Untitled");
+  const [publishSummary, setPublishSummary] = useState("");
+  const [publishScope, setPublishScope] = useState<"public" | "unlisted">("unlisted");
+  const [publishPending, setPublishPending] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
   const pendingNavigateRef = useRef<string | null>(null);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -126,7 +144,17 @@ export function SpaceWorkspace({ spaceId, initialData }: SpaceWorkspaceProps) {
             />
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {initialPublication?.published_at && (
+            <Link
+              href={`/published/${initialPublication.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg border border-[color:var(--border-subtle)] bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+            >
+              view published
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => setInviteOpen(true)}
@@ -145,7 +173,12 @@ export function SpaceWorkspace({ spaceId, initialData }: SpaceWorkspaceProps) {
           <button
             type="button"
             disabled={!canPublish}
-            className="rounded-lg border border-[color:var(--border-subtle)] bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => {
+              setPublishError(null);
+              setPublishTitle(title.trim() || initialData.title || "Untitled");
+              setPublishOpen(true);
+            }}
+            className="rounded-lg border border-[color:var(--border-subtle)] bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
             title={!canPublish ? "Add at least 2 people to publish" : undefined}
           >
             publish
@@ -181,6 +214,115 @@ export function SpaceWorkspace({ spaceId, initialData }: SpaceWorkspaceProps) {
 
       {inviteOpen && (
         <InviteCollaboratorsModal spaceId={spaceId} onClose={() => setInviteOpen(false)} />
+      )}
+
+      {publishOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => !publishPending && setPublishOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-[color:var(--border-subtle)] bg-background p-6 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold tracking-tight">Publish space</h2>
+            <p className="mt-2 text-sm text-zinc-600">
+              Only items marked <strong>external</strong> in each panel appear on the public page.
+            </p>
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-600">
+                  Title
+                </label>
+                <input
+                  value={publishTitle}
+                  onChange={(e) => setPublishTitle(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-[color:var(--border-subtle)] bg-white px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-600">
+                  Summary
+                </label>
+                <textarea
+                  value={publishSummary}
+                  onChange={(e) => setPublishSummary(e.target.value)}
+                  rows={3}
+                  className="mt-1 w-full rounded-lg border border-[color:var(--border-subtle)] bg-white px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-600">
+                  Visibility
+                </label>
+                <select
+                  value={publishScope}
+                  onChange={(e) =>
+                    setPublishScope(e.target.value as "public" | "unlisted")
+                  }
+                  className="mt-1 w-full rounded-lg border border-[color:var(--border-subtle)] bg-white px-3 py-2 text-sm"
+                >
+                  <option value="unlisted">Unlisted (link only)</option>
+                  <option value="public">Public</option>
+                </select>
+              </div>
+            </div>
+            {publishError && <p className="mt-2 text-sm text-red-600">{publishError}</p>}
+            <div className="mt-6 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={publishPending}
+                onClick={async () => {
+                  setPublishPending(true);
+                  setPublishError(null);
+                  const result = await publishSpace(spaceId, {
+                    title: publishTitle.trim() || "Untitled",
+                    summary: publishSummary.trim() || null,
+                    visibilityScope: publishScope,
+                  });
+                  setPublishPending(false);
+                  if (result.ok) {
+                    setPublishOpen(false);
+                    router.refresh();
+                  } else {
+                    setPublishError(result.error);
+                  }
+                }}
+                className="rounded-full border border-black bg-[#00cefc] px-4 py-1.5 text-sm font-semibold text-black hover:bg-[#00b3dd] disabled:opacity-50"
+              >
+                {publishPending ? "Publishing…" : "Publish now"}
+              </button>
+              {initialPublication?.published_at && (
+                <button
+                  type="button"
+                  disabled={publishPending}
+                  onClick={async () => {
+                    setPublishPending(true);
+                    const result = await unpublishSpace(spaceId);
+                    setPublishPending(false);
+                    if (result.ok) {
+                      setPublishOpen(false);
+                      router.refresh();
+                    } else {
+                      setPublishError(result.error);
+                    }
+                  }}
+                  className="rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+                >
+                  Unpublish
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={publishPending}
+                onClick={() => setPublishOpen(false)}
+                className="rounded-full border border-[color:var(--border-subtle)] px-4 py-1.5 text-sm font-medium hover:bg-zinc-100"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {leaveDialogOpen && (
@@ -257,6 +399,10 @@ function SpaceChatQuadrant({
           ) : (
             messages.map((m) => (
               <div key={m.id} className="rounded-lg bg-white/80 px-2 py-1.5 text-xs">
+                <span className="font-medium text-zinc-700">
+                  {m.author_display_name?.trim() || "Member"}
+                </span>
+                <span className="text-zinc-400"> · </span>
                 {m.content}
               </div>
             ))
@@ -495,42 +641,64 @@ function SpaceMediaQuadrant({
                     : "Audio"}
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto text-xs">
-                  <div className="grid grid-cols-[auto_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 border-b border-zinc-200 bg-zinc-50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
-                    <span />
-                    <span>Name</span>
-                    <span>Type</span>
-                    <span>Added</span>
+                  <div className="flex items-center gap-2 border-b border-zinc-200 bg-zinc-50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                    <span className="w-6" />
+                    <span className="min-w-0 flex-1">Name</span>
+                    <span className="w-14 shrink-0">Type</span>
+                    <span className="w-16 shrink-0 text-right">Added</span>
+                    <span className="w-[4.5rem] shrink-0 text-right">Share</span>
                   </div>
                   {filteredMedia.map((m) => {
                     const fileName =
                       m.title?.trim() || m.storage_path.split("/").pop() || "Untitled";
                     const isSelected = selected?.id === m.id;
+                    const vis = m.visibility ?? "internal";
                     return (
-                      <button
+                      <div
                         key={m.id}
-                        type="button"
-                        onClick={() => setSelectedId(m.id)}
-                        className={`grid w-full grid-cols-[auto_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 px-3 py-1.5 text-left ${
+                        className={`flex items-center gap-2 px-3 py-1.5 text-xs ${
                           isSelected
                             ? "bg-[#00cefc]/20"
                             : "odd:bg-white even:bg-zinc-50 hover:bg-zinc-100"
                         }`}
                       >
-                        <span className="flex h-6 w-6 items-center justify-center overflow-hidden rounded border border-zinc-200 bg-zinc-50">
-                          {m.type === "image" ? (
-                            <span className="h-4 w-4 rounded bg-zinc-300" />
-                          ) : m.type === "video" ? (
-                            <span className="h-4 w-4 rounded bg-zinc-900" />
-                          ) : (
-                            <span className="h-4 w-4 rounded bg-zinc-500" />
-                          )}
-                        </span>
-                        <span className="truncate">{fileName}</span>
-                        <span className="capitalize text-zinc-500">{m.type}</span>
-                        <span className="text-[10px] text-zinc-400">
-                          {new Date(m.created_at).toLocaleDateString()}
-                        </span>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(m.id)}
+                          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                        >
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded border border-zinc-200 bg-zinc-50">
+                            {m.type === "image" ? (
+                              <span className="h-4 w-4 rounded bg-zinc-300" />
+                            ) : m.type === "video" ? (
+                              <span className="h-4 w-4 rounded bg-zinc-900" />
+                            ) : (
+                              <span className="h-4 w-4 rounded bg-zinc-500" />
+                            )}
+                          </span>
+                          <span className="min-w-0 truncate">{fileName}</span>
+                          <span className="w-14 shrink-0 capitalize text-zinc-500">{m.type}</span>
+                          <span className="w-16 shrink-0 text-[10px] text-zinc-400">
+                            {new Date(m.created_at).toLocaleDateString()}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const next = vis === "external" ? "internal" : "external";
+                            const r = await setSpaceMediaVisibility(spaceId, m.id, next);
+                            if (r.ok) onRefresh();
+                          }}
+                          className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium ${
+                            vis === "external"
+                              ? "border-black bg-zinc-900 text-white"
+                              : "border-zinc-300 bg-zinc-100 text-zinc-700"
+                          }`}
+                        >
+                          {vis === "external" ? "Ext" : "Int"}
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -682,12 +850,37 @@ function SpaceBulletinQuadrant({
           {bulletins.length === 0 ? (
             <p className="text-xs text-zinc-500">No bulletins yet.</p>
           ) : (
-            bulletins.map((b) => (
-              <div key={b.id} className="rounded-lg border border-zinc-300 bg-white/80 p-2">
-                <p className="text-xs font-medium">{b.title}</p>
-                {b.description && <p className="mt-0.5 text-[10px] text-zinc-500">{b.description}</p>}
-              </div>
-            ))
+            bulletins.map((b) => {
+              const vis = b.visibility ?? "internal";
+              return (
+                <div
+                  key={b.id}
+                  className="flex items-start justify-between gap-2 rounded-lg border border-zinc-300 bg-white/80 p-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium">{b.title}</p>
+                    {b.description && (
+                      <p className="mt-0.5 text-[10px] text-zinc-500">{b.description}</p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const next = vis === "external" ? "internal" : "external";
+                      const r = await setSpaceBulletinVisibility(spaceId, b.id, next);
+                      if (r.ok) onRefresh();
+                    }}
+                    className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium ${
+                      vis === "external"
+                        ? "border-black bg-zinc-900 text-white"
+                        : "border-zinc-300 bg-zinc-100 text-zinc-700"
+                    }`}
+                  >
+                    {vis === "external" ? "Ext" : "Int"}
+                  </button>
+                </div>
+              );
+            })
           )}
         </div>
         <form onSubmit={handleSubmit} className="shrink-0 flex flex-col gap-1">
@@ -752,13 +945,53 @@ function SpaceTasksQuadrant({
           {tasks.length === 0 ? (
             <p className="text-xs text-zinc-500">No tasks yet.</p>
           ) : (
-            tasks.map((t) => (
-              <div key={t.id} className="rounded-lg border border-zinc-300 bg-white/80 p-2">
-                <p className="text-xs font-medium">{t.title}</p>
-                {t.description && <p className="mt-0.5 text-[10px] text-zinc-500">{t.description}</p>}
-                <span className="mt-0.5 inline-block rounded bg-zinc-200 px-1 text-[10px]">{t.status}</span>
-              </div>
-            ))
+            tasks.map((t) => {
+              const vis = t.visibility ?? "internal";
+              return (
+                <div
+                  key={t.id}
+                  className="space-y-1 rounded-lg border border-zinc-300 bg-white/80 p-2"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium">{t.title}</p>
+                      {t.description && (
+                        <p className="mt-0.5 text-[10px] text-zinc-500">{t.description}</p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const next = vis === "external" ? "internal" : "external";
+                        const r = await setSpaceTaskVisibility(spaceId, t.id, next);
+                        if (r.ok) onRefresh();
+                      }}
+                      className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium ${
+                        vis === "external"
+                          ? "border-black bg-zinc-900 text-white"
+                          : "border-zinc-300 bg-zinc-100 text-zinc-700"
+                      }`}
+                    >
+                      {vis === "external" ? "Ext" : "Int"}
+                    </button>
+                  </div>
+                  <select
+                    value={t.status}
+                    onChange={async (e) => {
+                      const r = await updateSpaceTaskStatus(spaceId, t.id, e.target.value);
+                      if (r.ok) onRefresh();
+                    }}
+                    className="w-full rounded border border-zinc-300 bg-white px-1 py-0.5 text-[10px]"
+                  >
+                    {(["todo", "in_progress", "review", "done"] as const).map((s) => (
+                      <option key={s} value={s}>
+                        {s.replace("_", " ")}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            })
           )}
         </div>
         <form onSubmit={handleSubmit} className="shrink-0 flex flex-col gap-1">

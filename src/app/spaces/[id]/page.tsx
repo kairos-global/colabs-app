@@ -1,4 +1,4 @@
-import { getSpacePageData } from "@/app/spaces/actions";
+import { getSpacePageData, getSpacePublicationSummary } from "@/app/spaces/actions";
 import { SpaceWorkspace } from "./SpaceWorkspace";
 
 type SpaceWorkspacePageProps = {
@@ -7,7 +7,10 @@ type SpaceWorkspacePageProps = {
 
 export default async function SpaceWorkspacePage({ params }: SpaceWorkspacePageProps) {
   const { id } = await params;
-  const data = await getSpacePageData(id);
+  const [data, publication] = await Promise.all([
+    getSpacePageData(id),
+    getSpacePublicationSummary(id),
+  ]);
 
   if (!data) {
     return (
@@ -23,5 +26,7 @@ export default async function SpaceWorkspacePage({ params }: SpaceWorkspacePageP
     );
   }
 
-  return <SpaceWorkspace spaceId={id} initialData={data} />;
+  return (
+    <SpaceWorkspace spaceId={id} initialData={data} initialPublication={publication} />
+  );
 }
