@@ -8,7 +8,8 @@ export const PRO_SPACE_BYTES = 50 * 1024 * 1024 * 1024; // 50 GB
 export const STARTER_MAX_SPACES = 3;
 export const STARTER_MAX_COLLABORATORS_PER_SPACE = 10;
 
-export function getPlanTierForProfile(planTier: PlanTier | null | undefined): PlanTier {
+/** Accepts DB `profiles.plan_tier` (text) or a narrowed PlanTier. */
+export function getPlanTierForProfile(planTier: string | null | undefined): PlanTier {
   return planTier === "pro" ? "pro" : "starter";
 }
 
