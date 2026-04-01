@@ -37,6 +37,7 @@ export type SpaceMessage = {
   id: string;
   content: string;
   author_id: string;
+  author_display_name: string | null;
   created_at: string;
 };
 
