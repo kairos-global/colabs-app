@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext";
 
 const navItems = [
   { href: "/", label: "Home" },
@@ -22,8 +23,9 @@ type AppShellProps = {
   shellProfile: ShellProfile;
 };
 
-export function AppShell({ children, shellProfile }: AppShellProps) {
+function AppShellInner({ children, shellProfile }: AppShellProps) {
   const pathname = usePathname();
+  const { collapsed } = useSidebar();
   const [mobileOpen, setMobileOpen] = useState(false);
   const displayLabel = (shellProfile?.displayName?.trim() ?? null) || "Profile";
   const initial = displayLabel[0]?.toUpperCase() ?? "?";
@@ -39,11 +41,17 @@ export function AppShell({ children, shellProfile }: AppShellProps) {
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       {/* Desktop sidebar */}
-      <aside className="hidden w-64 border-r border-[color:var(--border-subtle)] bg-sidebar px-6 py-8 md:flex md:flex-col md:gap-8">
-        <div className="text-base font-semibold tracking-tight">CoLabs</div>
+      <aside
+        className={[
+          "hidden border-r border-[color:var(--border-subtle)] bg-sidebar md:flex md:flex-col md:gap-8",
+          "overflow-hidden transition-[width,padding] duration-300 ease-in-out",
+          collapsed ? "w-0 px-0 py-8 border-r-0" : "w-64 px-6 py-8",
+        ].join(" ")}
+      >
+        <div className="shrink-0 text-base font-semibold tracking-tight whitespace-nowrap">CoLabs</div>
 
-        <nav className="flex flex-1 flex-col gap-4 text-base">
-          <span className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
+        <nav className="flex flex-1 flex-col gap-4 text-base min-w-[10rem]">
+          <span className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500 whitespace-nowrap">
             Workspace
           </span>
           <div className="flex flex-col gap-1">
@@ -58,7 +66,7 @@ export function AppShell({ children, shellProfile }: AppShellProps) {
         {shellProfile !== null && (
           <Link
             href="/profile"
-            className="mt-auto flex items-center gap-3 rounded-full px-2 py-2 hover:bg-zinc-100"
+            className="mt-auto flex items-center gap-3 rounded-full px-2 py-2 hover:bg-zinc-100 min-w-0"
           >
             <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-zinc-200">
               {shellProfile.avatarUrl ? (
@@ -83,7 +91,7 @@ export function AppShell({ children, shellProfile }: AppShellProps) {
         )}
       </aside>
 
-      {/* Mobile top bar: hamburger only, no profile bubble in header */}
+      {/* Mobile top bar */}
       <div className="flex flex-1 flex-col md:hidden">
         <header className="flex items-center justify-between border-b border-[color:var(--border-subtle)] bg-sidebar px-4 py-3">
           <div className="text-sm font-semibold tracking-tight">CoLabs</div>
@@ -113,7 +121,6 @@ export function AppShell({ children, shellProfile }: AppShellProps) {
                 </Link>
               ))}
             </div>
-            {/* When signed in: profile strip only. When signed out: Log in / Sign up only. */}
             {shellProfile !== null ? (
               <Link
                 href="/profile"
@@ -170,3 +177,10 @@ export function AppShell({ children, shellProfile }: AppShellProps) {
   );
 }
 
+export function AppShell({ children, shellProfile }: AppShellProps) {
+  return (
+    <SidebarProvider>
+      <AppShellInner shellProfile={shellProfile}>{children}</AppShellInner>
+    </SidebarProvider>
+  );
+}

@@ -26,6 +26,7 @@ import {
   type PublicationAnalytics,
 } from "@/app/spaces/actions";
 import { InviteCollaboratorsModal } from "@/components/InviteCollaboratorsModal";
+import { useSidebar } from "@/contexts/SidebarContext";
 
 type SpaceWorkspaceProps = {
   spaceId: string;
@@ -40,6 +41,7 @@ type SpaceWorkspaceProps = {
 
 export function SpaceWorkspace({ spaceId, initialData, initialPublication }: SpaceWorkspaceProps) {
   const router = useRouter();
+  const { collapse, expand } = useSidebar();
   const initialTitle =
     !initialData.title?.trim() || initialData.title.trim().toLowerCase() === "untitled"
       ? ""
@@ -100,6 +102,12 @@ export function SpaceWorkspace({ spaceId, initialData, initialPublication }: Spa
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [dirty]);
+
+  // Collapse the sidebar while inside a space; restore on leave
+  useEffect(() => {
+    collapse();
+    return () => expand();
+  }, [collapse, expand]);
 
   const handleBack = useCallback(
     (e: React.MouseEvent) => {
