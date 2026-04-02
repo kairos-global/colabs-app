@@ -60,6 +60,7 @@ export type SpaceBulletin = {
   description: string | null;
   visibility: string | null;
   created_at: string;
+  board_column: "C" | "M" | "Y" | "K";
 };
 
 export type SpaceTask = {
@@ -237,7 +238,7 @@ export async function getSpacePageData(spaceId: string): Promise<SpacePageData> 
         .order("created_at", { ascending: false }),
       supabase
         .from("space_boards")
-        .select("id, title, description, visibility, created_at")
+        .select("id, title, description, visibility, created_at, board_column")
         .eq("space_id", spaceId)
         .eq("type", "bulletin")
         .order("created_at", { ascending: false }),
@@ -674,7 +675,12 @@ export async function getUserSpaces(): Promise<SpaceSummary[]> {
   }
 }
 
-export async function createSpaceBulletin(spaceId: string, title: string, description?: string | null): Promise<CreateBulletinResult> {
+export async function createSpaceBulletin(
+  spaceId: string,
+  title: string,
+  description?: string | null,
+  boardColumn?: "C" | "M" | "Y" | "K"
+): Promise<CreateBulletinResult> {
   try {
     const { profile, supabase } = await ensureSpaceAccess(spaceId);
     if (!profile || !supabase) return { ok: false, error: "Not allowed" };
@@ -686,6 +692,7 @@ export async function createSpaceBulletin(spaceId: string, title: string, descri
       description: description?.trim() || null,
       type: "bulletin",
       visibility: "internal",
+      board_column: boardColumn ?? "C",
     });
     if (error) return { ok: false, error: error.message };
     return { ok: true };

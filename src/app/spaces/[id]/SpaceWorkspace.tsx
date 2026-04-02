@@ -443,6 +443,26 @@ export function SpaceWorkspace({ spaceId, initialData, initialPublication }: Spa
   );
 }
 
+// 8-slot color palette: cyan, magenta, yellow, red, blue, green, purple, pink
+const AUTHOR_COLORS = [
+  "text-cyan-500",
+  "text-fuchsia-500",
+  "text-yellow-500",
+  "text-red-500",
+  "text-blue-500",
+  "text-green-500",
+  "text-purple-500",
+  "text-pink-500",
+] as const;
+
+function authorColor(authorId: string): string {
+  let hash = 0;
+  for (let i = 0; i < authorId.length; i++) {
+    hash = (hash * 31 + authorId.charCodeAt(i)) >>> 0;
+  }
+  return AUTHOR_COLORS[hash % AUTHOR_COLORS.length];
+}
+
 function SpaceChatQuadrant({
   spaceId,
   messages,
@@ -454,6 +474,11 @@ function SpaceChatQuadrant({
 }) {
   const [content, setContent] = useState("");
   const [pending, setPending] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -477,14 +502,15 @@ function SpaceChatQuadrant({
           ) : (
             messages.map((m) => (
               <div key={m.id} className="rounded-lg bg-white/80 px-2 py-1.5 text-xs">
-                <span className="font-medium text-zinc-700">
+                <span className={`font-semibold ${authorColor(m.author_id)}`}>
                   {m.author_display_name?.trim() || "Member"}
                 </span>
-                <span className="text-zinc-400"> · </span>
-                {m.content}
+                <span className="text-zinc-300"> · </span>
+                <span className="text-zinc-700">{m.content}</span>
               </div>
             ))
           )}
+          <div ref={bottomRef} />
         </div>
         <form onSubmit={handleSubmit} className="flex gap-1">
           <input
@@ -943,6 +969,47 @@ function SpaceMediaQuadrant({
   );
 }
 
+const CMYK_COLUMNS = [
+  {
+    key: "C" as const,
+    label: "C",
+    accent: "bg-cyan-400",
+    headerText: "text-cyan-700",
+    headerBg: "bg-cyan-50",
+    border: "border-cyan-200",
+    addBtnClass: "border-cyan-400 text-cyan-700 hover:bg-cyan-50",
+  },
+  {
+    key: "M" as const,
+    label: "M",
+    accent: "bg-fuchsia-400",
+    headerText: "text-fuchsia-700",
+    headerBg: "bg-fuchsia-50",
+    border: "border-fuchsia-200",
+    addBtnClass: "border-fuchsia-400 text-fuchsia-700 hover:bg-fuchsia-50",
+  },
+  {
+    key: "Y" as const,
+    label: "Y",
+    accent: "bg-yellow-400",
+    headerText: "text-yellow-700",
+    headerBg: "bg-yellow-50",
+    border: "border-yellow-200",
+    addBtnClass: "border-yellow-400 text-yellow-700 hover:bg-yellow-50",
+  },
+  {
+    key: "K" as const,
+    label: "K",
+    accent: "bg-zinc-800",
+    headerText: "text-zinc-100",
+    headerBg: "bg-zinc-800",
+    border: "border-zinc-300",
+    addBtnClass: "border-zinc-400 text-zinc-600 hover:bg-zinc-100",
+  },
+] as const;
+
+type CMYKKey = "C" | "M" | "Y" | "K";
+
 function SpaceBulletinQuadrant({
   spaceId,
   bulletins,
@@ -952,98 +1019,128 @@ function SpaceBulletinQuadrant({
   bulletins: SpaceBulletin[];
   onRefresh: () => void;
 }) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [addingCol, setAddingCol] = useState<CMYKKey | null>(null);
+  const [newTitle, setNewTitle] = useState("");
   const [pending, setPending] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!title.trim() || pending) return;
+  async function handleAdd(col: CMYKKey) {
+    if (!newTitle.trim() || pending) return;
     setPending(true);
-    const result = await createSpaceBulletin(spaceId, title, description || null);
+    const result = await createSpaceBulletin(spaceId, newTitle, null, col);
     setPending(false);
     if (result.ok) {
-      setTitle("");
-      setDescription("");
+      setNewTitle("");
+      setAddingCol(null);
       onRefresh();
     }
   }
 
   return (
-    <section className="flex min-h-0 flex-col bg-zinc-100 p-4">
-      <h2 className="text-sm font-semibold tracking-tight">bulletin board</h2>
-      <div className="mt-2 flex flex-1 min-h-0 flex-col gap-2">
-        <div className="min-h-0 flex-1 overflow-y-auto space-y-1.5">
-          {bulletins.length === 0 ? (
-            <p className="text-xs text-zinc-500">No bulletins yet.</p>
-          ) : (
-            bulletins.map((b) => {
-              const vis = b.visibility ?? "internal";
-              return (
-                <div
-                  key={b.id}
-                  className="flex items-start justify-between gap-2 rounded-lg border border-zinc-300 bg-white/80 p-2"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium">{b.title}</p>
-                    {b.description && (
-                      <p className="mt-0.5 text-[10px] text-zinc-500">{b.description}</p>
-                    )}
+    <section className="flex min-h-0 flex-col bg-zinc-100 p-3">
+      <h2 className="shrink-0 text-sm font-semibold tracking-tight">bulletin board</h2>
+      {/* 4 CMYK columns scrolling horizontally */}
+      <div className="mt-2 flex min-h-0 flex-1 gap-2 overflow-x-auto pb-1">
+        {CMYK_COLUMNS.map((col) => {
+          const colBulletins = bulletins.filter(
+            (b) => (b.board_column ?? "C") === col.key
+          );
+          const isAdding = addingCol === col.key;
+
+          return (
+            <div
+              key={col.key}
+              className={`flex min-h-0 w-36 shrink-0 flex-col rounded-lg border ${col.border} bg-white/70 overflow-hidden`}
+            >
+              {/* Column header */}
+              <div className={`flex items-center justify-between px-2.5 py-1.5 ${col.headerBg}`}>
+                <span className={`text-xs font-bold tracking-widest ${col.headerText}`}>
+                  {col.label}
+                </span>
+                <span className="text-[10px] text-zinc-400">{colBulletins.length}</span>
+              </div>
+
+              {/* Items */}
+              <div className="flex min-h-0 flex-1 flex-col gap-0 overflow-y-auto">
+                {colBulletins.map((b) => {
+                  const vis = b.visibility ?? "internal";
+                  return (
+                    <div
+                      key={b.id}
+                      className="group flex items-start gap-1 border-b border-zinc-100 px-2.5 py-1.5 last:border-b-0"
+                    >
+                      <span className="mt-0.5 text-[10px] text-zinc-400 shrink-0">•</span>
+                      <p className="min-w-0 flex-1 text-[11px] leading-snug text-zinc-700 break-words">
+                        {b.title}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const next = vis === "external" ? "internal" : "external";
+                          const r = await setSpaceBulletinVisibility(spaceId, b.id, next);
+                          if (r.ok) onRefresh();
+                        }}
+                        className={`shrink-0 rounded border px-1 py-px text-[9px] font-medium opacity-0 group-hover:opacity-100 transition-opacity ${
+                          vis === "external"
+                            ? "border-black bg-zinc-900 text-white"
+                            : "border-zinc-300 bg-zinc-100 text-zinc-600"
+                        }`}
+                      >
+                        {vis === "external" ? "Ext" : "Int"}
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {/* Inline add form */}
+                {isAdding ? (
+                  <div className="border-t border-zinc-100 p-2 space-y-1">
+                    <input
+                      autoFocus
+                      type="text"
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleAdd(col.key);
+                        if (e.key === "Escape") { setAddingCol(null); setNewTitle(""); }
+                      }}
+                      placeholder="Item title…"
+                      className="w-full rounded border border-zinc-300 bg-white px-1.5 py-1 text-[11px] outline-none focus:border-zinc-500"
+                    />
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleAdd(col.key)}
+                        disabled={pending || !newTitle.trim()}
+                        className="flex-1 rounded border border-black bg-[#00cefc] px-1.5 py-0.5 text-[10px] font-semibold text-black disabled:opacity-50"
+                      >
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setAddingCol(null); setNewTitle(""); }}
+                        className="rounded border border-zinc-300 px-1.5 py-0.5 text-[10px] text-zinc-500 hover:bg-zinc-100"
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </div>
+                ) : (
                   <button
                     type="button"
-                    onClick={async () => {
-                      const next = vis === "external" ? "internal" : "external";
-                      const r = await setSpaceBulletinVisibility(spaceId, b.id, next);
-                      if (r.ok) onRefresh();
-                    }}
-                    className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium ${
-                      vis === "external"
-                        ? "border-black bg-zinc-900 text-white"
-                        : "border-zinc-300 bg-zinc-100 text-zinc-700"
-                    }`}
+                    onClick={() => { setAddingCol(col.key); setNewTitle(""); }}
+                    className={`m-2 flex items-center gap-1 rounded border px-2 py-1 text-[10px] font-medium transition-colors ${col.addBtnClass}`}
                   >
-                    {vis === "external" ? "Ext" : "Int"}
+                    <span>+</span> New
                   </button>
-                </div>
-              );
-            })
-          )}
-        </div>
-        <form onSubmit={handleSubmit} className="shrink-0 flex flex-col gap-1">
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Title"
-            className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs"
-          />
-          <input
-            type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Description (optional)"
-            className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs"
-          />
-          <button
-            type="submit"
-            disabled={pending || !title.trim()}
-            className="rounded border border-black bg-[#00cefc] px-2 py-1 text-xs font-medium text-black disabled:opacity-50"
-          >
-            Add
-          </button>
-        </form>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
 }
-
-const PRIORITY_CONFIG = {
-  low:      { label: "Low",      className: "bg-zinc-100 text-zinc-500 border-zinc-200" },
-  medium:   { label: "Med",      className: "bg-blue-50 text-blue-600 border-blue-200" },
-  high:     { label: "High",     className: "bg-amber-50 text-amber-600 border-amber-200" },
-  critical: { label: "Critical", className: "bg-red-50 text-red-600 border-red-200" },
-} as const;
 
 function isDueSoon(due: string | null): boolean {
   if (!due) return false;
@@ -1055,6 +1152,13 @@ function isOverdue(due: string | null): boolean {
   if (!due) return false;
   return new Date(due).getTime() < Date.now();
 }
+
+const STATUS_STYLES: Record<string, { label: string; pill: string }> = {
+  todo:        { label: "Not started", pill: "bg-zinc-100 text-zinc-500" },
+  in_progress: { label: "In progress", pill: "bg-blue-100 text-blue-700" },
+  review:      { label: "Reviewing",   pill: "bg-purple-100 text-purple-700" },
+  done:        { label: "Done",        pill: "bg-green-100 text-green-700" },
+};
 
 function SpaceTasksQuadrant({
   spaceId,
@@ -1068,29 +1172,23 @@ function SpaceTasksQuadrant({
   onRefresh: () => void;
 }) {
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [newPriority, setNewPriority] = useState<"low" | "medium" | "high" | "critical">("medium");
-  const [newDueDate, setNewDueDate] = useState("");
   const [newAssigneeId, setNewAssigneeId] = useState("");
+  const [newDueDate, setNewDueDate] = useState("");
+  const [newPriority, setNewPriority] = useState<"low" | "medium" | "high" | "critical">("medium");
   const [pending, setPending] = useState(false);
+  const [addingRow, setAddingRow] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleAddTask() {
     if (!title.trim() || pending) return;
     setPending(true);
-    const result = await createSpaceTask(spaceId, title, description || null);
+    const result = await createSpaceTask(spaceId, title, null);
     if (result.ok) {
-      // Apply extra fields right after creation if set
-      if (result.ok && (newPriority !== "medium" || newDueDate || newAssigneeId)) {
-        // updateSpaceTaskDetails will be called via refresh; for now just set via action
-      }
       setTitle("");
-      setDescription("");
       setNewDueDate("");
       setNewAssigneeId("");
       setNewPriority("medium");
+      setAddingRow(false);
       onRefresh();
     }
     setPending(false);
@@ -1100,264 +1198,228 @@ function SpaceTasksQuadrant({
     ? tasks
     : tasks.filter((t) => t.status === filterStatus);
 
-  const statusCounts = ["todo", "in_progress", "review", "done"].reduce((acc, s) => {
-    acc[s] = tasks.filter((t) => t.status === s).length;
-    return acc;
-  }, {} as Record<string, number>);
-
   return (
-    <section className="flex min-h-0 flex-col bg-zinc-100 p-4">
+    <section className="flex min-h-0 flex-col bg-zinc-100 p-3">
+      {/* Header */}
       <div className="flex shrink-0 items-center justify-between gap-2">
         <h2 className="text-sm font-semibold tracking-tight">task board</h2>
-        <span className="text-[10px] text-zinc-400">{tasks.length} task{tasks.length !== 1 ? "s" : ""}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-zinc-400">{tasks.length} task{tasks.length !== 1 ? "s" : ""}</span>
+          <button
+            type="button"
+            onClick={() => setAddingRow(true)}
+            className="rounded border border-black bg-[#00cefc] px-2 py-0.5 text-[10px] font-semibold text-black hover:bg-[#00b3dd]"
+          >
+            + New
+          </button>
+        </div>
       </div>
 
       {/* Status filter pills */}
-      <div className="mt-2 flex shrink-0 flex-wrap gap-1">
-        {[["all", "All"], ["todo", "Todo"], ["in_progress", "In progress"], ["review", "Review"], ["done", "Done"]].map(([val, label]) => (
+      <div className="mt-1.5 flex shrink-0 flex-wrap gap-1">
+        {[["all", "All"], ["todo", "Not started"], ["in_progress", "In progress"], ["review", "Reviewing"], ["done", "Done"]].map(([val, label]) => (
           <button
             key={val}
             type="button"
             onClick={() => setFilterStatus(val)}
-            className={`rounded-full border px-2 py-0.5 text-[10px] font-medium transition ${
+            className={`rounded-full border px-2 py-px text-[10px] font-medium transition ${
               filterStatus === val
                 ? "border-black bg-black text-white"
-                : "border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100"
+                : "border-zinc-300 bg-white text-zinc-500 hover:bg-zinc-100"
             }`}
           >
             {label}
-            {val !== "all" && statusCounts[val] > 0 && (
-              <span className={`ml-1 ${filterStatus === val ? "text-white/70" : "text-zinc-400"}`}>
-                {statusCounts[val]}
-              </span>
-            )}
           </button>
         ))}
       </div>
 
-      <div className="mt-2 flex flex-1 min-h-0 flex-col gap-2">
-        <div className="min-h-0 flex-1 overflow-y-auto space-y-1.5 pr-0.5">
-          {filteredTasks.length === 0 ? (
-            <p className="text-xs text-zinc-500">
-              {filterStatus === "all" ? "No tasks yet." : `No ${filterStatus.replace("_", " ")} tasks.`}
-            </p>
-          ) : (
-            filteredTasks.map((t) => {
-              const vis = t.visibility ?? "internal";
-              const priority = t.priority ?? "medium";
-              const pc = PRIORITY_CONFIG[priority];
-              const overdue = isOverdue(t.due_date);
-              const dueSoon = isDueSoon(t.due_date);
-              const isExpanded = expandedId === t.id;
-
-              return (
-                <div
-                  key={t.id}
-                  className="rounded-lg border border-zinc-300 bg-white/80 overflow-hidden"
-                >
-                  {/* Task header row */}
-                  <div className="flex items-center gap-1.5 px-2 pt-2 pb-1">
-                    {/* Priority badge */}
-                    <span className={`shrink-0 rounded border px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${pc.className}`}>
-                      {pc.label}
-                    </span>
-                    {/* Title */}
-                    <button
-                      type="button"
-                      onClick={() => setExpandedId(isExpanded ? null : t.id)}
-                      className="min-w-0 flex-1 text-left"
-                    >
-                      <p className={`truncate text-xs font-medium ${t.status === "done" ? "line-through text-zinc-400" : ""}`}>
-                        {t.title}
-                      </p>
-                    </button>
-                    {/* Int/Ext toggle */}
-                    <button
-                      type="button"
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        const next = vis === "external" ? "internal" : "external";
-                        const r = await setSpaceTaskVisibility(spaceId, t.id, next);
-                        if (r.ok) onRefresh();
-                      }}
-                      className={`shrink-0 rounded border px-1.5 py-0.5 text-[9px] font-medium ${
-                        vis === "external"
-                          ? "border-black bg-zinc-900 text-white"
-                          : "border-zinc-300 bg-zinc-100 text-zinc-600"
-                      }`}
-                    >
-                      {vis === "external" ? "Ext" : "Int"}
-                    </button>
-                  </div>
-
-                  {/* Meta row: status + due + assignee */}
-                  <div className="flex flex-wrap items-center gap-1 px-2 pb-2">
-                    {/* Status */}
-                    <select
-                      value={t.status}
-                      onChange={async (e) => {
-                        e.stopPropagation();
-                        const r = await updateSpaceTaskStatus(spaceId, t.id, e.target.value);
-                        if (r.ok) onRefresh();
-                      }}
-                      className="rounded border border-zinc-300 bg-white px-1 py-0.5 text-[10px]"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {(["todo", "in_progress", "review", "done"] as const).map((s) => (
-                        <option key={s} value={s}>{s.replace("_", " ")}</option>
-                      ))}
-                    </select>
-
-                    {/* Due date */}
-                    {t.due_date && (
-                      <span className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${
-                        overdue
-                          ? "border-red-300 bg-red-50 text-red-600"
-                          : dueSoon
-                          ? "border-amber-300 bg-amber-50 text-amber-600"
-                          : "border-zinc-300 bg-zinc-50 text-zinc-500"
-                      }`}>
-                        {overdue ? "⚠ " : ""}
-                        {new Date(t.due_date + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                      </span>
-                    )}
-
-                    {/* Assignee */}
-                    {t.assignee_name && (
-                      <span className="rounded border border-zinc-300 bg-zinc-50 px-1.5 py-0.5 text-[10px] text-zinc-600">
-                        {t.assignee_name}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Expanded detail editor */}
-                  {isExpanded && (
-                    <div className="border-t border-zinc-200 bg-zinc-50 px-2 py-2 space-y-1.5">
-                      {t.description && (
-                        <p className="text-[10px] text-zinc-500">{t.description}</p>
-                      )}
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {/* Priority picker */}
-                        <div>
-                          <label className="block text-[9px] font-semibold uppercase tracking-wide text-zinc-400 mb-0.5">Priority</label>
-                          <select
-                            value={priority}
-                            onChange={async (e) => {
-                              const r = await updateSpaceTaskDetails(spaceId, t.id, { priority: e.target.value as SpaceTask["priority"] ?? "medium" });
-                              if (r.ok) onRefresh();
-                            }}
-                            className="w-full rounded border border-zinc-300 bg-white px-1 py-0.5 text-[10px]"
-                          >
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
-                            <option value="critical">Critical</option>
-                          </select>
-                        </div>
-                        {/* Due date picker */}
-                        <div>
-                          <label className="block text-[9px] font-semibold uppercase tracking-wide text-zinc-400 mb-0.5">Due date</label>
-                          <input
-                            type="date"
-                            defaultValue={t.due_date ?? ""}
-                            onBlur={async (e) => {
-                              const val = e.target.value || null;
-                              if (val !== t.due_date) {
-                                const r = await updateSpaceTaskDetails(spaceId, t.id, { due_date: val });
-                                if (r.ok) onRefresh();
-                              }
-                            }}
-                            className="w-full rounded border border-zinc-300 bg-white px-1 py-0.5 text-[10px]"
-                          />
-                        </div>
-                      </div>
-                      {/* Assignee picker */}
-                      {members.length > 0 && (
-                        <div>
-                          <label className="block text-[9px] font-semibold uppercase tracking-wide text-zinc-400 mb-0.5">Assignee</label>
-                          <select
-                            value={t.assignee_id ?? ""}
-                            onChange={async (e) => {
-                              const val = e.target.value || null;
-                              const r = await updateSpaceTaskDetails(spaceId, t.id, { assignee_id: val });
-                              if (r.ok) onRefresh();
-                            }}
-                            className="w-full rounded border border-zinc-300 bg-white px-1 py-0.5 text-[10px]"
-                          >
-                            <option value="">Unassigned</option>
-                            {members.map((m) => (
-                              <option key={m.id} value={m.id}>
-                                {m.display_name ?? m.id.slice(0, 8)}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
+      {/* Notion-style task table */}
+      <div className="mt-2 min-h-0 flex-1 overflow-hidden rounded-lg border border-zinc-200 bg-white">
+        {/* Column headers */}
+        <div className="grid grid-cols-[1fr_80px_80px_70px_36px] border-b border-zinc-200 bg-zinc-50 px-2 py-1.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Name</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Status</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Assign</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Deadline</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Vis</span>
         </div>
 
-        {/* New task form */}
-        <form onSubmit={handleSubmit} className="shrink-0 space-y-1 rounded-lg border border-zinc-300 bg-white/80 p-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">New task</p>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Task title"
-            className="w-full rounded border border-zinc-300 bg-white px-2 py-1 text-xs"
-          />
-          <input
-            type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Description (optional)"
-            className="w-full rounded border border-zinc-300 bg-white px-2 py-1 text-xs"
-          />
-          <div className="grid grid-cols-2 gap-1">
-            <select
-              value={newPriority}
-              onChange={(e) => setNewPriority(e.target.value as typeof newPriority)}
-              className="rounded border border-zinc-300 bg-white px-1 py-1 text-xs"
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="critical">Critical</option>
-            </select>
-            <input
-              type="date"
-              value={newDueDate}
-              onChange={(e) => setNewDueDate(e.target.value)}
-              className="rounded border border-zinc-300 bg-white px-1 py-1 text-xs"
-            />
-          </div>
-          {members.length > 0 && (
-            <select
-              value={newAssigneeId}
-              onChange={(e) => setNewAssigneeId(e.target.value)}
-              className="w-full rounded border border-zinc-300 bg-white px-1 py-1 text-xs"
-            >
-              <option value="">Unassigned</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.display_name ?? m.id.slice(0, 8)}
-                </option>
-              ))}
-            </select>
+        {/* Task rows */}
+        <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-zinc-100">
+          {filteredTasks.length === 0 && !addingRow && (
+            <p className="px-3 py-3 text-xs text-zinc-400">
+              {filterStatus === "all" ? "No tasks yet. Hit + New to add one." : `No ${filterStatus.replace("_", " ")} tasks.`}
+            </p>
           )}
-          <button
-            type="submit"
-            disabled={pending || !title.trim()}
-            className="w-full rounded border border-black bg-[#00cefc] px-2 py-1 text-xs font-medium text-black disabled:opacity-50"
-          >
-            {pending ? "Adding…" : "Add task"}
-          </button>
-        </form>
+
+          {filteredTasks.map((t) => {
+            const vis = t.visibility ?? "internal";
+            const overdue = isOverdue(t.due_date);
+            const dueSoon = isDueSoon(t.due_date);
+            const statusStyle = STATUS_STYLES[t.status] ?? STATUS_STYLES.todo;
+
+            return (
+              <div
+                key={t.id}
+                className="group grid grid-cols-[1fr_80px_80px_70px_36px] items-center gap-0 px-2 py-1.5 hover:bg-zinc-50"
+              >
+                {/* Name */}
+                <p className={`truncate text-[11px] font-medium ${t.status === "done" ? "line-through text-zinc-400" : "text-zinc-800"}`}>
+                  {t.title}
+                </p>
+
+                {/* Status pill — click to cycle */}
+                <div>
+                  <select
+                    value={t.status}
+                    onChange={async (e) => {
+                      const r = await updateSpaceTaskStatus(spaceId, t.id, e.target.value);
+                      if (r.ok) onRefresh();
+                    }}
+                    className={`cursor-pointer rounded-full border-0 px-1.5 py-0.5 text-[10px] font-medium outline-none ${statusStyle.pill}`}
+                  >
+                    {(["todo", "in_progress", "review", "done"] as const).map((s) => (
+                      <option key={s} value={s}>{STATUS_STYLES[s].label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Assignee */}
+                <div>
+                  {members.length > 0 ? (
+                    <select
+                      value={t.assignee_id ?? ""}
+                      onChange={async (e) => {
+                        const val = e.target.value || null;
+                        const r = await updateSpaceTaskDetails(spaceId, t.id, { assignee_id: val });
+                        if (r.ok) onRefresh();
+                      }}
+                      className="w-full truncate rounded border-0 bg-transparent text-[10px] text-zinc-600 outline-none hover:bg-zinc-100 px-0.5"
+                    >
+                      <option value="">—</option>
+                      {members.map((m) => (
+                        <option key={m.id} value={m.id}>{m.display_name ?? m.id.slice(0, 8)}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-[10px] text-zinc-300">—</span>
+                  )}
+                </div>
+
+                {/* Deadline */}
+                <div>
+                  <input
+                    type="date"
+                    defaultValue={t.due_date ?? ""}
+                    onBlur={async (e) => {
+                      const val = e.target.value || null;
+                      if (val !== t.due_date) {
+                        const r = await updateSpaceTaskDetails(spaceId, t.id, { due_date: val });
+                        if (r.ok) onRefresh();
+                      }
+                    }}
+                    className={`w-full rounded border-0 bg-transparent text-[10px] outline-none hover:bg-zinc-100 px-0.5 ${
+                      overdue ? "text-red-600" : dueSoon ? "text-amber-600" : "text-zinc-500"
+                    }`}
+                  />
+                </div>
+
+                {/* Vis toggle */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const next = vis === "external" ? "internal" : "external";
+                      const r = await setSpaceTaskVisibility(spaceId, t.id, next);
+                      if (r.ok) onRefresh();
+                    }}
+                    className={`rounded border px-1 py-px text-[9px] font-medium opacity-0 group-hover:opacity-100 transition-opacity ${
+                      vis === "external"
+                        ? "border-black bg-zinc-900 text-white"
+                        : "border-zinc-300 bg-zinc-100 text-zinc-500"
+                    }`}
+                  >
+                    {vis === "external" ? "E" : "I"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Inline add row */}
+          {addingRow && (
+            <div className="grid grid-cols-[1fr_80px_80px_70px_36px] items-center gap-0 border-t border-zinc-100 bg-zinc-50 px-2 py-1.5">
+              <input
+                autoFocus
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddTask();
+                  if (e.key === "Escape") { setAddingRow(false); setTitle(""); }
+                }}
+                placeholder="Task name…"
+                className="rounded border border-zinc-300 bg-white px-1.5 py-0.5 text-[11px] outline-none focus:border-zinc-500"
+              />
+              <select
+                value={newPriority}
+                onChange={(e) => setNewPriority(e.target.value as typeof newPriority)}
+                className="rounded border border-zinc-200 bg-white px-1 py-0.5 text-[10px]"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+              {members.length > 0 ? (
+                <select
+                  value={newAssigneeId}
+                  onChange={(e) => setNewAssigneeId(e.target.value)}
+                  className="rounded border border-zinc-200 bg-white px-1 py-0.5 text-[10px]"
+                >
+                  <option value="">—</option>
+                  {members.map((m) => (
+                    <option key={m.id} value={m.id}>{m.display_name ?? m.id.slice(0, 8)}</option>
+                  ))}
+                </select>
+              ) : <span />}
+              <input
+                type="date"
+                value={newDueDate}
+                onChange={(e) => setNewDueDate(e.target.value)}
+                className="rounded border border-zinc-200 bg-white px-1 py-0.5 text-[10px]"
+              />
+              <div className="flex gap-0.5">
+                <button
+                  type="button"
+                  onClick={handleAddTask}
+                  disabled={pending || !title.trim()}
+                  className="rounded border border-black bg-[#00cefc] px-1.5 py-0.5 text-[10px] font-semibold text-black disabled:opacity-50"
+                >
+                  {pending ? "…" : "✓"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAddingRow(false); setTitle(""); }}
+                  className="rounded border border-zinc-300 px-1 py-0.5 text-[10px] text-zinc-500 hover:bg-zinc-100"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* + New row at bottom */}
+          {!addingRow && (
+            <button
+              type="button"
+              onClick={() => setAddingRow(true)}
+              className="flex w-full items-center gap-1.5 px-3 py-1.5 text-[11px] text-zinc-400 hover:bg-zinc-50 hover:text-zinc-600"
+            >
+              <span>+</span> New
+            </button>
+          )}
+        </div>
       </div>
     </section>
   );
