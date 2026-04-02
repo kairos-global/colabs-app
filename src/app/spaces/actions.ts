@@ -80,6 +80,12 @@ export type SpaceMember = {
   display_name: string | null;
 };
 
+export type ProfileSearchResult = {
+  id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+};
+
 function normalizeEmail(email: string | null | undefined): string | null {
   if (!email?.trim()) return null;
   return email.trim().toLowerCase();
@@ -1197,5 +1203,53 @@ export async function uploadSpaceMedia(spaceId: string, formData: FormData): Pro
     return { ok: true };
   } catch (err) {
     return { ok: false, error: toErrorString(err) };
+  }
+}
+
+export async function searchProfiles(
+  query: string,
+  spaceId: string
+): Promise<ProfileSearchResult[]> {
+  try {
+    const { userId } = await auth();
+    if (!userId) return [];
+    const supabase = getServerSupabaseClient();
+    const currentProfile = await getProfileByClerkId(supabase, userId);
+    if (!currentProfile) return [];
+
+    const trimmed = query.trim();
+    if (trimmed.length < 1) return [];
+
+    // Fetch existing members so we can exclude them
+    const { data: memberRows } = await supabase
+      .from("space_members")
+      .select("user_id")
+      .eq("space_id", spaceId);
+    const memberIds = new Set<string>(
+      (memberRows ?? []).map((r: { user_id: string }) => r.user_id)
+    );
+    memberIds.add(currentProfile.id); // exclude self
+
+    // Also exclude people who already have a pending invite
+    const { data: inviteRows } = await supabase
+      .from("space_invites")
+      .select("invitee_profile_id")
+      .eq("space_id", spaceId)
+      .eq("status", "pending")
+      .not("invitee_profile_id", "is", null);
+    for (const r of inviteRows ?? []) {
+      if (r.invitee_profile_id) memberIds.add(r.invitee_profile_id as string);
+    }
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, display_name, avatar_url")
+      .ilike("display_name", `%${trimmed}%`)
+      .not("id", "in", `(${Array.from(memberIds).join(",")})`)
+      .limit(8);
+
+    return (data ?? []) as ProfileSearchResult[];
+  } catch {
+    return [];
   }
 }
