@@ -27,6 +27,14 @@ export function ProfileView({ data }: ProfileViewProps) {
         <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
         {profile && (
           <div className="flex gap-2 text-sm">
+            <a
+              href={`/profile/${profile.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full border border-zinc-300 bg-background px-4 py-1.5 font-medium text-zinc-600 hover:bg-zinc-100"
+            >
+              Public page ↗
+            </a>
             <button
               type="button"
               onClick={() => setEditOpen(true)}

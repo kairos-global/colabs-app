@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { getPublicationPageDataById } from "@/app/spaces/actions";
+import { getPublicationPageDataById, recordPublicationView } from "@/app/spaces/actions";
 
 type PublishedPageProps = {
   params: Promise<{ id: string }>;
@@ -10,6 +11,12 @@ export default async function PublishedPage({ params }: PublishedPageProps) {
   const { id } = await params;
   const data = await getPublicationPageDataById(id);
   if (!data) notFound();
+
+  // Track view — non-blocking, swallows errors internally
+  const headersList = await headers();
+  const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+  const referer = headersList.get("referer") ?? null;
+  void recordPublicationView(id, ip, referer);
 
   return (
     <main className="min-h-screen bg-background px-4 py-10 text-foreground md:px-12">

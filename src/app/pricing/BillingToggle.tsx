@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useAuth } from "@clerk/nextjs";
+import { createCheckoutSession } from "@/app/billing/actions";
 
 export type BillingMode = "annual" | "monthly";
 
@@ -66,6 +67,20 @@ export function BillingToggle({ mode, onChange }: BillingToggleProps) {
 export function BillingPricingSection() {
   const [mode, setMode] = useState<BillingMode>("annual");
   const { isSignedIn } = useAuth();
+  const [isPending, startTransition] = useTransition();
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  function handleUpgradeClick() {
+    setCheckoutError(null);
+    startTransition(async () => {
+      const result = await createCheckoutSession(mode);
+      if (result.ok) {
+        window.location.href = result.url;
+      } else {
+        setCheckoutError(result.error);
+      }
+    });
+  }
 
   const annual = mode === "annual";
   const proPrice = annual ? 8 : 10;
@@ -218,17 +233,31 @@ export function BillingPricingSection() {
             </li>
           </ul>
 
-          <Link
-            href={{
-              pathname: "/sign-up",
-              query: { plan: "pro", billing: mode },
-            }}
-            data-plan="pro"
-            data-billing={mode}
-            className="mt-10 block w-full rounded-[10px] border border-white bg-white px-6 py-3.5 text-center text-sm font-medium text-black transition hover:bg-transparent hover:text-white"
-          >
-            Start free trial
-          </Link>
+          {checkoutError && (
+            <p className="mt-4 text-xs text-red-400">{checkoutError}</p>
+          )}
+          {isSignedIn ? (
+            <button
+              type="button"
+              onClick={handleUpgradeClick}
+              disabled={isPending}
+              className="mt-10 block w-full rounded-[10px] border border-white bg-white px-6 py-3.5 text-center text-sm font-medium text-black transition hover:bg-transparent hover:text-white disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isPending ? "Redirecting…" : "Start free trial"}
+            </button>
+          ) : (
+            <Link
+              href={{
+                pathname: "/sign-up",
+                query: { plan: "pro", billing: mode },
+              }}
+              data-plan="pro"
+              data-billing={mode}
+              className="mt-10 block w-full rounded-[10px] border border-white bg-white px-6 py-3.5 text-center text-sm font-medium text-black transition hover:bg-transparent hover:text-white"
+            >
+              Start free trial
+            </Link>
+          )}
         </section>
       </div>
     </>

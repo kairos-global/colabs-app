@@ -27,6 +27,7 @@ export type SpacePageData = {
   media: SpaceMedia[];
   bulletins: SpaceBulletin[];
   tasks: SpaceTask[];
+  members: SpaceMember[];
   storage: {
     usedBytes: number;
     maxBytes: number;
@@ -67,7 +68,16 @@ export type SpaceTask = {
   description: string | null;
   status: string;
   visibility: string | null;
+  priority: "low" | "medium" | "high" | "critical" | null;
+  due_date: string | null;
+  assignee_id: string | null;
+  assignee_name: string | null;
   created_at: string;
+};
+
+export type SpaceMember = {
+  id: string;
+  display_name: string | null;
 };
 
 function normalizeEmail(email: string | null | undefined): string | null {
@@ -208,7 +218,7 @@ export async function getSpacePageData(spaceId: string): Promise<SpacePageData> 
     const tier = getPlanTierForProfile((profile as { plan_tier?: string | null }).plan_tier);
     const maxBytes = getSpaceByteLimitForPlan(tier);
 
-    const [messagesRes, mediaRes, boardsRes, tasksRes] = await Promise.all([
+    const [messagesRes, mediaRes, boardsRes, tasksRes, membersRes] = await Promise.all([
       supabase
         .from("space_messages")
         .select("id, content, author_id, created_at")
@@ -227,9 +237,13 @@ export async function getSpacePageData(spaceId: string): Promise<SpacePageData> 
         .order("created_at", { ascending: false }),
       supabase
         .from("space_tasks")
-        .select("id, title, description, status, visibility, created_at")
+        .select("id, title, description, status, visibility, priority, due_date, assignee_id, created_at, profiles!space_tasks_assignee_id_fkey(display_name)")
         .eq("space_id", spaceId)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("space_members")
+        .select("user_id, profiles!space_members_user_id_fkey(id, display_name)")
+        .eq("space_id", spaceId),
     ]);
 
     const rawMessages = (messagesRes.data ?? []) as {
@@ -278,7 +292,22 @@ export async function getSpacePageData(spaceId: string): Promise<SpacePageData> 
       messages: messagesWithAuthors,
       media: mediaWithUrls,
       bulletins: (boardsRes.data ?? []) as SpaceBulletin[],
-      tasks: (tasksRes.data ?? []) as SpaceTask[],
+      tasks: (tasksRes.data ?? []).map((t: Record<string, unknown>) => ({
+        id: t.id as string,
+        title: t.title as string,
+        description: (t.description as string | null) ?? null,
+        status: (t.status as string) ?? "todo",
+        visibility: (t.visibility as string | null) ?? "internal",
+        priority: (t.priority as SpaceTask["priority"]) ?? "medium",
+        due_date: (t.due_date as string | null) ?? null,
+        assignee_id: (t.assignee_id as string | null) ?? null,
+        assignee_name: ((t.profiles as { display_name?: string | null } | null)?.display_name) ?? null,
+        created_at: t.created_at as string,
+      })) as SpaceTask[],
+      members: (membersRes.data ?? []).map((m: Record<string, unknown>) => ({
+        id: ((m.profiles as { id?: string } | null)?.id) ?? (m.user_id as string),
+        display_name: ((m.profiles as { display_name?: string | null } | null)?.display_name) ?? null,
+      })) as SpaceMember[],
       storage: {
         usedBytes,
         maxBytes,
@@ -708,6 +737,37 @@ export async function updateSpaceTaskStatus(
   }
 }
 
+export type UpdateTaskDetailsInput = {
+  priority?: "low" | "medium" | "high" | "critical";
+  due_date?: string | null;   // ISO date string YYYY-MM-DD or null to clear
+  assignee_id?: string | null; // profile UUID or null to unassign
+};
+
+export async function updateSpaceTaskDetails(
+  spaceId: string,
+  taskId: string,
+  input: UpdateTaskDetailsInput
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { profile, supabase } = await ensureSpaceAccess(spaceId);
+    if (!profile || !supabase) return { ok: false, error: "Not allowed" };
+    const updates: Record<string, unknown> = {};
+    if (input.priority !== undefined) updates.priority = input.priority;
+    if ("due_date" in input) updates.due_date = input.due_date ?? null;
+    if ("assignee_id" in input) updates.assignee_id = input.assignee_id ?? null;
+    if (Object.keys(updates).length === 0) return { ok: true };
+    const { error } = await supabase
+      .from("space_tasks")
+      .update(updates)
+      .eq("id", taskId)
+      .eq("space_id", spaceId);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 export type VisibilityToggleResult = { ok: true } | { ok: false; error: string };
 
 export async function setSpaceMediaVisibility(
@@ -996,6 +1056,72 @@ function toErrorString(err: unknown): string {
   return String(err);
 }
 
+// ---------------------------------------------------------------------------
+// Analytics
+// ---------------------------------------------------------------------------
+
+/** Record a view for a published page. Call from the published page server component. */
+export async function recordPublicationView(
+  publicationId: string,
+  ipAddress: string | null,
+  referrer: string | null
+): Promise<void> {
+  try {
+    const supabase = getServerSupabaseClient();
+    // Hash the IP so we don't store raw PII but can still deduplicate
+    let ipHash: string | null = null;
+    if (ipAddress) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(ipAddress);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      ipHash = Array.from(new Uint8Array(hashBuffer))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+    }
+    await supabase.from("publication_views").insert({
+      publication_id: publicationId,
+      ip_hash: ipHash,
+      referrer: referrer ? new URL(referrer).hostname : null,
+    });
+  } catch {
+    // Analytics should never break the page — swallow errors silently
+  }
+}
+
+export type PublicationAnalytics = {
+  totalViews: number;
+  uniqueViewers: number;
+  viewsLast7d: number;
+  viewsLast30d: number;
+  lastViewedAt: string | null;
+};
+
+/** Get analytics for a publication. Only callable by the space owner/member. */
+export async function getPublicationAnalytics(
+  spaceId: string,
+  publicationId: string
+): Promise<PublicationAnalytics | null> {
+  try {
+    await ensureSpaceAccess(spaceId);
+    const supabase = getServerSupabaseClient();
+    const { data, error } = await supabase
+      .from("publication_view_counts")
+      .select("*")
+      .eq("publication_id", publicationId)
+      .maybeSingle();
+    if (error || !data) return { totalViews: 0, uniqueViewers: 0, viewsLast7d: 0, viewsLast30d: 0, lastViewedAt: null };
+    return {
+      totalViews: Number(data.total_views ?? 0),
+      uniqueViewers: Number(data.unique_viewers ?? 0),
+      viewsLast7d: Number(data.views_last_7d ?? 0),
+      viewsLast30d: Number(data.views_last_30d ?? 0),
+      lastViewedAt: data.last_viewed_at ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function uploadSpaceMedia(spaceId: string, formData: FormData): Promise<UploadSpaceMediaResult> {
   try {
     let profile: Awaited<ReturnType<typeof ensureSpaceAccess>>["profile"];
@@ -1015,16 +1141,18 @@ export async function uploadSpaceMedia(spaceId: string, formData: FormData): Pro
     const file = formData.get("file") as File | null;
     if (!file || file.size === 0) return { ok: false, error: "No file" };
     const formType = formData.get("type");
-    const type: "image" | "video" | "audio" =
+    const type: "image" | "video" | "audio" | "document" =
       formType === "video" || file.type.startsWith("video/")
         ? "video"
         : formType === "audio" || file.type.startsWith("audio/")
         ? "audio"
+        : formType === "document" || file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+        ? "document"
         : "image";
     const ext =
       file.name.split(".").pop() ||
-      (type === "video" ? "mp4" : type === "audio" ? "mp3" : "jpg");
-    const safeExt = /^[a-z0-9]+$/i.test(ext ?? "") ? ext : type === "video" ? "mp4" : type === "audio" ? "mp3" : "jpg";
+      (type === "video" ? "mp4" : type === "audio" ? "mp3" : type === "document" ? "pdf" : "jpg");
+    const safeExt = /^[a-z0-9]+$/i.test(ext ?? "") ? ext : type === "video" ? "mp4" : type === "audio" ? "mp3" : type === "document" ? "pdf" : "jpg";
     if (file.size > spaceLimit) {
       return {
         ok: false,
@@ -1046,8 +1174,8 @@ export async function uploadSpaceMedia(spaceId: string, formData: FormData): Pro
       };
     }
 
-    // space-media bucket: {spaceId}/images|video|audio/{uuid}.{ext}
-    const folder = type === "image" ? "images" : type;
+    // space-media bucket: {spaceId}/images|video|audio|documents/{uuid}.{ext}
+    const folder = type === "image" ? "images" : type === "document" ? "documents" : type;
     const path = `${spaceId}/${folder}/${crypto.randomUUID()}.${safeExt}`;
     const { error: uploadError } = await supabase.storage
       .from(SPACE_MEDIA_BUCKET)

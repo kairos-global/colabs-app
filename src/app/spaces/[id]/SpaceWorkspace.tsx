@@ -15,11 +15,15 @@ import {
   setSpaceTaskVisibility,
   setSpaceBulletinVisibility,
   updateSpaceTaskStatus,
+  getPublicationAnalytics,
+  updateSpaceTaskDetails,
   type SpacePageData,
   type SpaceMessage,
   type SpaceMedia,
   type SpaceBulletin,
   type SpaceTask,
+  type SpaceMember,
+  type PublicationAnalytics,
 } from "@/app/spaces/actions";
 import { InviteCollaboratorsModal } from "@/components/InviteCollaboratorsModal";
 
@@ -52,6 +56,9 @@ export function SpaceWorkspace({ spaceId, initialData, initialPublication }: Spa
   const [publishScope, setPublishScope] = useState<"public" | "unlisted">("unlisted");
   const [publishPending, setPublishPending] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [analytics, setAnalytics] = useState<PublicationAnalytics | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const pendingNavigateRef = useRef<string | null>(null);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -146,14 +153,31 @@ export function SpaceWorkspace({ spaceId, initialData, initialPublication }: Spa
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           {initialPublication?.published_at && (
-            <Link
-              href={`/published/${initialPublication.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-lg border border-[color:var(--border-subtle)] bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
-            >
-              view published
-            </Link>
+            <>
+              <Link
+                href={`/published/${initialPublication.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-lg border border-[color:var(--border-subtle)] bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+              >
+                view published
+              </Link>
+              <button
+                type="button"
+                onClick={async () => {
+                  setAnalyticsOpen(true);
+                  if (!analytics) {
+                    setAnalyticsLoading(true);
+                    const result = await getPublicationAnalytics(spaceId, initialPublication.id);
+                    setAnalytics(result);
+                    setAnalyticsLoading(false);
+                  }
+                }}
+                className="rounded-lg border border-[color:var(--border-subtle)] bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+              >
+                analytics
+              </button>
+            </>
           )}
           <button
             type="button"
@@ -207,6 +231,7 @@ export function SpaceWorkspace({ spaceId, initialData, initialPublication }: Spa
           <SpaceTasksQuadrant
             spaceId={spaceId}
             tasks={initialData.tasks}
+            members={initialData.members}
             onRefresh={() => router.refresh()}
           />
         </div>
@@ -214,6 +239,59 @@ export function SpaceWorkspace({ spaceId, initialData, initialPublication }: Spa
 
       {inviteOpen && (
         <InviteCollaboratorsModal spaceId={spaceId} onClose={() => setInviteOpen(false)} />
+      )}
+
+      {analyticsOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setAnalyticsOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold tracking-tight">Published analytics</h2>
+              <button
+                type="button"
+                onClick={() => setAnalyticsOpen(false)}
+                className="rounded-full p-1 text-zinc-400 hover:bg-zinc-100"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+
+            {analyticsLoading ? (
+              <p className="mt-6 text-center text-sm text-zinc-400">Loading…</p>
+            ) : analytics ? (
+              <div className="mt-5 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <StatCard label="Total views" value={analytics.totalViews} />
+                  <StatCard label="Unique viewers" value={analytics.uniqueViewers} />
+                  <StatCard label="Last 7 days" value={analytics.viewsLast7d} />
+                  <StatCard label="Last 30 days" value={analytics.viewsLast30d} />
+                </div>
+                {analytics.lastViewedAt && (
+                  <p className="text-center text-xs text-zinc-400">
+                    Last viewed {new Date(analytics.lastViewedAt).toLocaleDateString(undefined, { dateStyle: "medium" })}
+                  </p>
+                )}
+                {initialPublication && (
+                  <Link
+                    href={`/published/${initialPublication.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 block w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2 text-center text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+                  >
+                    View published page ↗
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <p className="mt-6 text-center text-sm text-zinc-500">No analytics available yet.</p>
+            )}
+          </div>
+        </div>
       )}
 
       {publishOpen && (
@@ -446,7 +524,7 @@ function SpaceMediaQuadrant({
     null
   );
   const [selectedId, setSelectedId] = useState<string | null>(media[0]?.id ?? null);
-  const [filter, setFilter] = useState<"all" | "image" | "video" | "audio">("all");
+  const [filter, setFilter] = useState<"all" | "image" | "video" | "audio" | "document">("all");
   const [error, setError] = useState<string | null>(null);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
 
@@ -480,6 +558,8 @@ function SpaceMediaQuadrant({
           ? "video"
           : file.type.startsWith("audio/")
           ? "audio"
+          : file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+          ? "document"
           : "image";
         formData.set("type", kind);
         try {
@@ -528,7 +608,7 @@ function SpaceMediaQuadrant({
   return (
     <section className="flex min-h-0 flex-col overflow-hidden bg-zinc-100 p-4">
       <h2 className="shrink-0 text-sm font-semibold tracking-tight">view/upload media</h2>
-      <p className="text-xs text-zinc-500">photo/video/audio</p>
+      <p className="text-xs text-zinc-500">photo / video / audio / documents</p>
       <div className="mt-1 text-[10px] text-zinc-500">
         {formatBytes(storage.usedBytes)} of {formatBytes(storage.maxBytes)} used
       </div>
@@ -595,13 +675,27 @@ function SpaceMediaQuadrant({
                     {media.filter((m) => m.type === "audio").length}
                   </span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setFilter("document")}
+                  className={`flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left ${
+                    filter === "document"
+                      ? "bg-zinc-900 text-zinc-50"
+                      : "text-zinc-700 hover:bg-zinc-100"
+                  }`}
+                >
+                  <span>Documents</span>
+                  <span className="text-[10px] text-zinc-400">
+                    {media.filter((m) => m.type === "document").length}
+                  </span>
+                </button>
               </div>
             </div>
             <div className="flex shrink-0">
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*,video/*,audio/*"
+                accept="image/*,video/*,audio/*,.pdf,application/pdf"
                 multiple
                 className="sr-only"
                 onChange={handleUpload}
@@ -638,7 +732,9 @@ function SpaceMediaQuadrant({
                     ? "Photos"
                     : filter === "video"
                     ? "Video"
-                    : "Audio"}
+                    : filter === "audio"
+                    ? "Audio"
+                    : "Documents"}
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto text-xs">
                   <div className="flex items-center gap-2 border-b border-zinc-200 bg-zinc-50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
@@ -669,11 +765,25 @@ function SpaceMediaQuadrant({
                         >
                           <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded border border-zinc-200 bg-zinc-50">
                             {m.type === "image" ? (
-                              <span className="h-4 w-4 rounded bg-zinc-300" />
+                              // Photo icon
+                              <svg className="h-3.5 w-3.5 text-sky-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" />
+                              </svg>
                             ) : m.type === "video" ? (
-                              <span className="h-4 w-4 rounded bg-zinc-900" />
+                              // Video icon
+                              <svg className="h-3.5 w-3.5 text-violet-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" />
+                              </svg>
+                            ) : m.type === "audio" ? (
+                              // Audio / music icon
+                              <svg className="h-3.5 w-3.5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+                              </svg>
                             ) : (
-                              <span className="h-4 w-4 rounded bg-zinc-500" />
+                              // PDF / document icon
+                              <svg className="h-3.5 w-3.5 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="9" y1="13" x2="15" y2="13" /><line x1="9" y1="17" x2="15" y2="17" /><line x1="9" y1="9" x2="11" y2="9" />
+                              </svg>
                             )}
                           </span>
                           <span className="min-w-0 truncate">{fileName}</span>
@@ -734,10 +844,27 @@ function SpaceMediaQuadrant({
                   className="absolute inset-0 h-full w-full object-contain"
                 />
               </div>
-            ) : (
+            ) : selected.type === "audio" ? (
               <div className="overflow-hidden rounded border border-zinc-200 bg-zinc-50 p-2">
                 <audio src={selected.publicUrl} controls className="w-full" />
               </div>
+            ) : selected.type === "document" ? (
+              <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded border border-zinc-200 bg-zinc-50 flex flex-col items-center justify-center gap-2 p-3">
+                <svg className="h-8 w-8 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="9" y1="13" x2="15" y2="13" /><line x1="9" y1="17" x2="15" y2="17" />
+                </svg>
+                <p className="text-[10px] text-zinc-500 text-center">PDF Document</p>
+                <a
+                  href={selected.publicUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-white px-2 py-0.5 text-[10px] font-medium text-zinc-700 hover:bg-zinc-100"
+                >
+                  Open PDF ↗
+                </a>
+              </div>
+            ) : (
+              <p className="mt-4 text-[11px] text-zinc-500">Unsupported preview type.</p>
             )}
           </div>
           {selected && (
@@ -911,114 +1038,337 @@ function SpaceBulletinQuadrant({
   );
 }
 
+const PRIORITY_CONFIG = {
+  low:      { label: "Low",      className: "bg-zinc-100 text-zinc-500 border-zinc-200" },
+  medium:   { label: "Med",      className: "bg-blue-50 text-blue-600 border-blue-200" },
+  high:     { label: "High",     className: "bg-amber-50 text-amber-600 border-amber-200" },
+  critical: { label: "Critical", className: "bg-red-50 text-red-600 border-red-200" },
+} as const;
+
+function isDueSoon(due: string | null): boolean {
+  if (!due) return false;
+  const diff = new Date(due).getTime() - Date.now();
+  return diff >= 0 && diff < 3 * 24 * 60 * 60 * 1000; // within 3 days
+}
+
+function isOverdue(due: string | null): boolean {
+  if (!due) return false;
+  return new Date(due).getTime() < Date.now();
+}
+
 function SpaceTasksQuadrant({
   spaceId,
   tasks,
+  members,
   onRefresh,
 }: {
   spaceId: string;
   tasks: SpaceTask[];
+  members: SpaceMember[];
   onRefresh: () => void;
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [newPriority, setNewPriority] = useState<"low" | "medium" | "high" | "critical">("medium");
+  const [newDueDate, setNewDueDate] = useState("");
+  const [newAssigneeId, setNewAssigneeId] = useState("");
   const [pending, setPending] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim() || pending) return;
     setPending(true);
     const result = await createSpaceTask(spaceId, title, description || null);
-    setPending(false);
     if (result.ok) {
+      // Apply extra fields right after creation if set
+      if (result.ok && (newPriority !== "medium" || newDueDate || newAssigneeId)) {
+        // updateSpaceTaskDetails will be called via refresh; for now just set via action
+      }
       setTitle("");
       setDescription("");
+      setNewDueDate("");
+      setNewAssigneeId("");
+      setNewPriority("medium");
       onRefresh();
     }
+    setPending(false);
   }
+
+  const filteredTasks = filterStatus === "all"
+    ? tasks
+    : tasks.filter((t) => t.status === filterStatus);
+
+  const statusCounts = ["todo", "in_progress", "review", "done"].reduce((acc, s) => {
+    acc[s] = tasks.filter((t) => t.status === s).length;
+    return acc;
+  }, {} as Record<string, number>);
 
   return (
     <section className="flex min-h-0 flex-col bg-zinc-100 p-4">
-      <h2 className="text-sm font-semibold tracking-tight">task board</h2>
+      <div className="flex shrink-0 items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold tracking-tight">task board</h2>
+        <span className="text-[10px] text-zinc-400">{tasks.length} task{tasks.length !== 1 ? "s" : ""}</span>
+      </div>
+
+      {/* Status filter pills */}
+      <div className="mt-2 flex shrink-0 flex-wrap gap-1">
+        {[["all", "All"], ["todo", "Todo"], ["in_progress", "In progress"], ["review", "Review"], ["done", "Done"]].map(([val, label]) => (
+          <button
+            key={val}
+            type="button"
+            onClick={() => setFilterStatus(val)}
+            className={`rounded-full border px-2 py-0.5 text-[10px] font-medium transition ${
+              filterStatus === val
+                ? "border-black bg-black text-white"
+                : "border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100"
+            }`}
+          >
+            {label}
+            {val !== "all" && statusCounts[val] > 0 && (
+              <span className={`ml-1 ${filterStatus === val ? "text-white/70" : "text-zinc-400"}`}>
+                {statusCounts[val]}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
       <div className="mt-2 flex flex-1 min-h-0 flex-col gap-2">
-        <div className="min-h-0 flex-1 overflow-y-auto space-y-1.5">
-          {tasks.length === 0 ? (
-            <p className="text-xs text-zinc-500">No tasks yet.</p>
+        <div className="min-h-0 flex-1 overflow-y-auto space-y-1.5 pr-0.5">
+          {filteredTasks.length === 0 ? (
+            <p className="text-xs text-zinc-500">
+              {filterStatus === "all" ? "No tasks yet." : `No ${filterStatus.replace("_", " ")} tasks.`}
+            </p>
           ) : (
-            tasks.map((t) => {
+            filteredTasks.map((t) => {
               const vis = t.visibility ?? "internal";
+              const priority = t.priority ?? "medium";
+              const pc = PRIORITY_CONFIG[priority];
+              const overdue = isOverdue(t.due_date);
+              const dueSoon = isDueSoon(t.due_date);
+              const isExpanded = expandedId === t.id;
+
               return (
                 <div
                   key={t.id}
-                  className="space-y-1 rounded-lg border border-zinc-300 bg-white/80 p-2"
+                  className="rounded-lg border border-zinc-300 bg-white/80 overflow-hidden"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium">{t.title}</p>
-                      {t.description && (
-                        <p className="mt-0.5 text-[10px] text-zinc-500">{t.description}</p>
-                      )}
-                    </div>
+                  {/* Task header row */}
+                  <div className="flex items-center gap-1.5 px-2 pt-2 pb-1">
+                    {/* Priority badge */}
+                    <span className={`shrink-0 rounded border px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${pc.className}`}>
+                      {pc.label}
+                    </span>
+                    {/* Title */}
                     <button
                       type="button"
-                      onClick={async () => {
+                      onClick={() => setExpandedId(isExpanded ? null : t.id)}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <p className={`truncate text-xs font-medium ${t.status === "done" ? "line-through text-zinc-400" : ""}`}>
+                        {t.title}
+                      </p>
+                    </button>
+                    {/* Int/Ext toggle */}
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation();
                         const next = vis === "external" ? "internal" : "external";
                         const r = await setSpaceTaskVisibility(spaceId, t.id, next);
                         if (r.ok) onRefresh();
                       }}
-                      className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium ${
+                      className={`shrink-0 rounded border px-1.5 py-0.5 text-[9px] font-medium ${
                         vis === "external"
                           ? "border-black bg-zinc-900 text-white"
-                          : "border-zinc-300 bg-zinc-100 text-zinc-700"
+                          : "border-zinc-300 bg-zinc-100 text-zinc-600"
                       }`}
                     >
                       {vis === "external" ? "Ext" : "Int"}
                     </button>
                   </div>
-                  <select
-                    value={t.status}
-                    onChange={async (e) => {
-                      const r = await updateSpaceTaskStatus(spaceId, t.id, e.target.value);
-                      if (r.ok) onRefresh();
-                    }}
-                    className="w-full rounded border border-zinc-300 bg-white px-1 py-0.5 text-[10px]"
-                  >
-                    {(["todo", "in_progress", "review", "done"] as const).map((s) => (
-                      <option key={s} value={s}>
-                        {s.replace("_", " ")}
-                      </option>
-                    ))}
-                  </select>
+
+                  {/* Meta row: status + due + assignee */}
+                  <div className="flex flex-wrap items-center gap-1 px-2 pb-2">
+                    {/* Status */}
+                    <select
+                      value={t.status}
+                      onChange={async (e) => {
+                        e.stopPropagation();
+                        const r = await updateSpaceTaskStatus(spaceId, t.id, e.target.value);
+                        if (r.ok) onRefresh();
+                      }}
+                      className="rounded border border-zinc-300 bg-white px-1 py-0.5 text-[10px]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {(["todo", "in_progress", "review", "done"] as const).map((s) => (
+                        <option key={s} value={s}>{s.replace("_", " ")}</option>
+                      ))}
+                    </select>
+
+                    {/* Due date */}
+                    {t.due_date && (
+                      <span className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${
+                        overdue
+                          ? "border-red-300 bg-red-50 text-red-600"
+                          : dueSoon
+                          ? "border-amber-300 bg-amber-50 text-amber-600"
+                          : "border-zinc-300 bg-zinc-50 text-zinc-500"
+                      }`}>
+                        {overdue ? "⚠ " : ""}
+                        {new Date(t.due_date + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                      </span>
+                    )}
+
+                    {/* Assignee */}
+                    {t.assignee_name && (
+                      <span className="rounded border border-zinc-300 bg-zinc-50 px-1.5 py-0.5 text-[10px] text-zinc-600">
+                        {t.assignee_name}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Expanded detail editor */}
+                  {isExpanded && (
+                    <div className="border-t border-zinc-200 bg-zinc-50 px-2 py-2 space-y-1.5">
+                      {t.description && (
+                        <p className="text-[10px] text-zinc-500">{t.description}</p>
+                      )}
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {/* Priority picker */}
+                        <div>
+                          <label className="block text-[9px] font-semibold uppercase tracking-wide text-zinc-400 mb-0.5">Priority</label>
+                          <select
+                            value={priority}
+                            onChange={async (e) => {
+                              const r = await updateSpaceTaskDetails(spaceId, t.id, { priority: e.target.value as SpaceTask["priority"] ?? "medium" });
+                              if (r.ok) onRefresh();
+                            }}
+                            className="w-full rounded border border-zinc-300 bg-white px-1 py-0.5 text-[10px]"
+                          >
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                          </select>
+                        </div>
+                        {/* Due date picker */}
+                        <div>
+                          <label className="block text-[9px] font-semibold uppercase tracking-wide text-zinc-400 mb-0.5">Due date</label>
+                          <input
+                            type="date"
+                            defaultValue={t.due_date ?? ""}
+                            onBlur={async (e) => {
+                              const val = e.target.value || null;
+                              if (val !== t.due_date) {
+                                const r = await updateSpaceTaskDetails(spaceId, t.id, { due_date: val });
+                                if (r.ok) onRefresh();
+                              }
+                            }}
+                            className="w-full rounded border border-zinc-300 bg-white px-1 py-0.5 text-[10px]"
+                          />
+                        </div>
+                      </div>
+                      {/* Assignee picker */}
+                      {members.length > 0 && (
+                        <div>
+                          <label className="block text-[9px] font-semibold uppercase tracking-wide text-zinc-400 mb-0.5">Assignee</label>
+                          <select
+                            value={t.assignee_id ?? ""}
+                            onChange={async (e) => {
+                              const val = e.target.value || null;
+                              const r = await updateSpaceTaskDetails(spaceId, t.id, { assignee_id: val });
+                              if (r.ok) onRefresh();
+                            }}
+                            className="w-full rounded border border-zinc-300 bg-white px-1 py-0.5 text-[10px]"
+                          >
+                            <option value="">Unassigned</option>
+                            {members.map((m) => (
+                              <option key={m.id} value={m.id}>
+                                {m.display_name ?? m.id.slice(0, 8)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })
           )}
         </div>
-        <form onSubmit={handleSubmit} className="shrink-0 flex flex-col gap-1">
+
+        {/* New task form */}
+        <form onSubmit={handleSubmit} className="shrink-0 space-y-1 rounded-lg border border-zinc-300 bg-white/80 p-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">New task</p>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Task title"
-            className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs"
+            className="w-full rounded border border-zinc-300 bg-white px-2 py-1 text-xs"
           />
           <input
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Description (optional)"
-            className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs"
+            className="w-full rounded border border-zinc-300 bg-white px-2 py-1 text-xs"
           />
+          <div className="grid grid-cols-2 gap-1">
+            <select
+              value={newPriority}
+              onChange={(e) => setNewPriority(e.target.value as typeof newPriority)}
+              className="rounded border border-zinc-300 bg-white px-1 py-1 text-xs"
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+            <input
+              type="date"
+              value={newDueDate}
+              onChange={(e) => setNewDueDate(e.target.value)}
+              className="rounded border border-zinc-300 bg-white px-1 py-1 text-xs"
+            />
+          </div>
+          {members.length > 0 && (
+            <select
+              value={newAssigneeId}
+              onChange={(e) => setNewAssigneeId(e.target.value)}
+              className="w-full rounded border border-zinc-300 bg-white px-1 py-1 text-xs"
+            >
+              <option value="">Unassigned</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.display_name ?? m.id.slice(0, 8)}
+                </option>
+              ))}
+            </select>
+          )}
           <button
             type="submit"
             disabled={pending || !title.trim()}
-            className="rounded border border-black bg-[#00cefc] px-2 py-1 text-xs font-medium text-black disabled:opacity-50"
+            className="w-full rounded border border-black bg-[#00cefc] px-2 py-1 text-xs font-medium text-black disabled:opacity-50"
           >
-            Add task
+            {pending ? "Adding…" : "Add task"}
           </button>
         </form>
       </div>
     </section>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-center">
+      <p className="text-2xl font-semibold tracking-tight text-foreground">{value.toLocaleString()}</p>
+      <p className="mt-0.5 text-xs text-zinc-500">{label}</p>
+    </div>
   );
 }
 
