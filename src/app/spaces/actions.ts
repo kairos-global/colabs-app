@@ -823,6 +823,45 @@ export async function setSpaceTaskVisibility(
   }
 }
 
+export async function deleteSpaceTask(
+  spaceId: string,
+  taskId: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { profile, supabase } = await ensureSpaceAccess(spaceId);
+    if (!profile || !supabase) return { ok: false, error: "Not allowed" };
+    const { error } = await supabase
+      .from("space_tasks")
+      .delete()
+      .eq("id", taskId)
+      .eq("space_id", spaceId);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+export async function deleteSpaceBulletin(
+  spaceId: string,
+  bulletinId: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { profile, supabase } = await ensureSpaceAccess(spaceId);
+    if (!profile || !supabase) return { ok: false, error: "Not allowed" };
+    const { error } = await supabase
+      .from("space_boards")
+      .delete()
+      .eq("id", bulletinId)
+      .eq("space_id", spaceId)
+      .eq("type", "bulletin");
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 export async function setSpaceBulletinVisibility(
   spaceId: string,
   bulletinId: string,

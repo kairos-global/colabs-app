@@ -17,6 +17,8 @@ import {
   updateSpaceTaskStatus,
   getPublicationAnalytics,
   updateSpaceTaskDetails,
+  deleteSpaceTask,
+  deleteSpaceBulletin,
   type SpacePageData,
   type SpaceMessage,
   type SpaceMedia,
@@ -219,22 +221,25 @@ export function SpaceWorkspace({ spaceId, initialData, initialPublication }: Spa
       </header>
 
       <main className="flex flex-1 flex-col overflow-hidden">
-        <div className="grid flex-1 min-h-0 grid-cols-1 grid-rows-4 gap-px bg-zinc-300 md:grid-cols-2 md:grid-rows-2 [&>*]:min-h-0">
+        <div className="grid flex-1 min-h-0 grid-cols-1 grid-rows-4 gap-0 md:grid-cols-2 md:grid-rows-2 [&>*]:min-h-0">
           <SpaceChatQuadrant
             spaceId={spaceId}
             messages={initialData.messages}
             onRefresh={() => router.refresh()}
+            className="border-b border-dashed border-black md:border-r"
           />
           <SpaceMediaQuadrant
             spaceId={spaceId}
             media={initialData.media}
             storage={initialData.storage}
             onRefresh={() => router.refresh()}
+            className="border-b border-dashed border-black"
           />
           <SpaceBulletinQuadrant
             spaceId={spaceId}
             bulletins={initialData.bulletins}
             onRefresh={() => router.refresh()}
+            className="border-b border-dashed border-black md:border-r md:border-b-0"
           />
           <SpaceTasksQuadrant
             spaceId={spaceId}
@@ -475,10 +480,12 @@ function SpaceChatQuadrant({
   spaceId,
   messages,
   onRefresh,
+  className,
 }: {
   spaceId: string;
   messages: SpaceMessage[];
   onRefresh: () => void;
+  className?: string;
 }) {
   const [content, setContent] = useState("");
   const [pending, setPending] = useState(false);
@@ -501,15 +508,15 @@ function SpaceChatQuadrant({
   }
 
   return (
-    <section className="flex min-h-0 flex-col bg-zinc-100 p-4">
-      <h2 className="text-sm font-semibold tracking-tight">chat</h2>
-      <div className="mt-2 flex flex-1 min-h-0 flex-col gap-2 overflow-hidden">
-        <div className="min-h-0 flex-1 overflow-y-auto space-y-1.5">
+    <section className={`flex min-h-0 flex-col bg-zinc-50 p-5 ${className ?? ""}`}>
+      <h2 className="text-base font-semibold tracking-tight">chat</h2>
+      <div className="mt-3 flex flex-1 min-h-0 flex-col gap-3 overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-y-auto space-y-2">
           {messages.length === 0 ? (
-            <p className="text-xs text-zinc-500">No messages yet.</p>
+            <p className="text-sm text-zinc-400">No messages yet.</p>
           ) : (
             messages.map((m) => (
-              <div key={m.id} className="rounded-lg bg-white/80 px-2 py-1.5 text-xs">
+              <div key={m.id} className="rounded-xl bg-white px-3 py-2 text-sm shadow-sm">
                 <span className={`font-semibold ${authorColor(m.author_id)}`}>
                   {m.author_display_name?.trim() || "Member"}
                 </span>
@@ -520,18 +527,18 @@ function SpaceChatQuadrant({
           )}
           <div ref={bottomRef} />
         </div>
-        <form onSubmit={handleSubmit} className="flex gap-1">
+        <form onSubmit={handleSubmit} className="flex gap-2">
           <input
             type="text"
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Type a message..."
-            className="min-w-0 flex-1 rounded border border-zinc-300 bg-white px-2 py-1 text-xs"
+            className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-500"
           />
           <button
             type="submit"
             disabled={pending || !content.trim()}
-            className="shrink-0 rounded border border-black bg-[#00cefc] px-2 py-1 text-xs font-medium text-black disabled:opacity-50"
+            className="shrink-0 rounded-lg border border-black bg-[#00cefc] px-4 py-2 text-sm font-medium text-black disabled:opacity-50"
           >
             Send
           </button>
@@ -546,11 +553,13 @@ function SpaceMediaQuadrant({
   media,
   onRefresh,
   storage,
+  className,
 }: {
   spaceId: string;
   media: SpaceMedia[];
   onRefresh: () => void;
   storage: NonNullable<SpacePageData>["storage"];
+  className?: string;
 }) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -640,12 +649,12 @@ function SpaceMediaQuadrant({
     null;
 
   return (
-    <section className="flex min-h-0 flex-col overflow-hidden bg-zinc-100 p-4">
+    <section className={`flex min-h-0 flex-col overflow-hidden bg-zinc-50 p-5 ${className ?? ""}`}>
       <div className="flex shrink-0 items-start justify-between gap-2">
         <div>
-          <h2 className="text-sm font-semibold tracking-tight">view/upload media</h2>
-          <p className="text-xs text-zinc-500">photo / video / audio / documents</p>
-          <div className="mt-0.5 text-[10px] text-zinc-500">
+          <h2 className="text-base font-semibold tracking-tight">Media</h2>
+          <p className="text-sm text-zinc-500">upload files you'd like to share here</p>
+          <div className="mt-0.5 text-xs text-zinc-400">
             {formatBytes(storage.usedBytes)} of {formatBytes(storage.maxBytes)} used
           </div>
         </div>
@@ -663,7 +672,7 @@ function SpaceMediaQuadrant({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="rounded border border-black bg-[#00cefc] px-3 py-1.5 text-xs font-medium text-black disabled:opacity-50"
+            className="rounded-lg border border-black bg-[#00cefc] px-4 py-2 text-sm font-medium text-black disabled:opacity-50"
           >
             {uploading && uploadProgress
               ? `Uploading ${uploadProgress.current}/${uploadProgress.total}…`
@@ -673,125 +682,61 @@ function SpaceMediaQuadrant({
           </button>
         </div>
       </div>
-      <div className="mt-2 flex min-w-0 flex-1 flex-col gap-3 md:flex-row">
-        {/* Left column: library + file list stacked in one view */}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden md:max-w-[280px] md:flex-none">
-          <div className="min-w-0 flex-none rounded-lg border border-zinc-300 bg-white/70 p-1.5">
-              <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
-                library
-              </p>
-              <div className="mt-1 space-y-0.5 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setFilter("all")}
-                  className={`flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left ${
-                    filter === "all"
-                      ? "bg-zinc-900 text-zinc-50"
-                      : "text-zinc-700 hover:bg-zinc-100"
-                  }`}
-                >
-                  <span>All media</span>
-                  <span className="text-[10px] text-zinc-400">{media.length}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilter("image")}
-                  className={`flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left ${
-                    filter === "image"
-                      ? "bg-zinc-900 text-zinc-50"
-                      : "text-zinc-700 hover:bg-zinc-100"
-                  }`}
-                >
-                  <span>Photos</span>
-                  <span className="text-[10px] text-zinc-400">
-                    {media.filter((m) => m.type === "image").length}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilter("video")}
-                  className={`flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left ${
-                    filter === "video"
-                      ? "bg-zinc-900 text-zinc-50"
-                      : "text-zinc-700 hover:bg-zinc-100"
-                  }`}
-                >
-                  <span>Video</span>
-                  <span className="text-[10px] text-zinc-400">
-                    {media.filter((m) => m.type === "video").length}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilter("audio")}
-                  className={`flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left ${
-                    filter === "audio"
-                      ? "bg-zinc-900 text-zinc-50"
-                      : "text-zinc-700 hover:bg-zinc-100"
-                  }`}
-                >
-                  <span>Audio</span>
-                  <span className="text-[10px] text-zinc-400">
-                    {media.filter((m) => m.type === "audio").length}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilter("document")}
-                  className={`flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left ${
-                    filter === "document"
-                      ? "bg-zinc-900 text-zinc-50"
-                      : "text-zinc-700 hover:bg-zinc-100"
-                  }`}
-                >
-                  <span>Documents</span>
-                  <span className="text-[10px] text-zinc-400">
-                    {media.filter((m) => m.type === "document").length}
-                  </span>
-                </button>
-              </div>
+      <div className="mt-3 flex min-w-0 flex-1 flex-col gap-3 md:flex-row">
+        {/* Left column: library + file list */}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden md:max-w-[300px] md:flex-none">
+          <div className="min-w-0 flex-none rounded-xl border border-zinc-200 bg-white p-2">
+            <p className="px-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-zinc-400">
+              Library
+            </p>
+            <div className="mt-1.5 space-y-0.5 text-sm">
+              {(["all", "image", "video", "audio", "document"] as const).map((type) => {
+                const labels: Record<string, string> = { all: "All media", image: "Photos", video: "Video", audio: "Audio", document: "Documents" };
+                const count = type === "all" ? media.length : media.filter((m) => m.type === type).length;
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setFilter(type)}
+                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left ${
+                      filter === type ? "bg-zinc-900 text-zinc-50" : "text-zinc-700 hover:bg-zinc-100"
+                    }`}
+                  >
+                    <span>{labels[type]}</span>
+                    <span className="text-xs text-zinc-400">{count}</span>
+                  </button>
+                );
+              })}
             </div>
+          </div>
 
-          <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-zinc-300 bg-white/70">
+          <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-zinc-200 bg-white">
             {media.length === 0 ? (
-              <div className="flex h-full items-center justify-center px-4 py-6">
-                <p className="text-xs text-zinc-500">
-                  No media yet. Upload files to see them here.
-                </p>
+              <div className="flex h-full items-center justify-center px-4 py-8">
+                <p className="text-sm text-zinc-400 text-center">No media yet. Upload files to see them here.</p>
               </div>
             ) : (
               <div className="flex h-full flex-col">
-                <div className="border-b border-zinc-200 bg-zinc-50 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
-                  {filter === "all"
-                    ? "All items"
-                    : filter === "image"
-                    ? "Photos"
-                    : filter === "video"
-                    ? "Video"
-                    : filter === "audio"
-                    ? "Audio"
-                    : "Documents"}
+                <div className="border-b border-zinc-100 bg-zinc-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-zinc-400">
+                  {filter === "all" ? "All items" : filter === "image" ? "Photos" : filter === "video" ? "Video" : filter === "audio" ? "Audio" : "Documents"}
                 </div>
-                <div className="min-h-0 flex-1 overflow-y-auto text-xs">
-                  <div className="flex items-center gap-2 border-b border-zinc-200 bg-zinc-50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
-                    <span className="w-6" />
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  <div className="flex items-center gap-2 border-b border-zinc-100 bg-zinc-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-zinc-400">
+                    <span className="w-7 shrink-0" />
                     <span className="min-w-0 flex-1">Name</span>
-                    <span className="w-14 shrink-0">Type</span>
-                    <span className="w-16 shrink-0 text-right">Added</span>
-                    <span className="w-[4.5rem] shrink-0 text-right">Share</span>
+                    <span className="w-16 shrink-0">Type</span>
+                    <span className="w-20 shrink-0 text-right">Added</span>
+                    <span className="w-12 shrink-0 text-right">Share</span>
                   </div>
                   {filteredMedia.map((m) => {
-                    const fileName =
-                      m.title?.trim() || m.storage_path.split("/").pop() || "Untitled";
+                    const fileName = m.title?.trim() || m.storage_path.split("/").pop() || "Untitled";
                     const isSelected = selected?.id === m.id;
                     const vis = m.visibility ?? "internal";
                     return (
                       <div
                         key={m.id}
-                        className={`flex items-center gap-2 px-3 py-1.5 text-xs ${
-                          isSelected
-                            ? "bg-[#00cefc]/20"
-                            : "odd:bg-white even:bg-zinc-50 hover:bg-zinc-100"
+                        className={`flex items-center gap-2 px-3 py-2.5 text-sm ${
+                          isSelected ? "bg-[#00cefc]/15" : "odd:bg-white even:bg-zinc-50 hover:bg-zinc-100"
                         }`}
                       >
                         <button
@@ -799,32 +744,20 @@ function SpaceMediaQuadrant({
                           onClick={() => setSelectedId(m.id)}
                           className="flex min-w-0 flex-1 items-center gap-2 text-left"
                         >
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded border border-zinc-200 bg-zinc-50">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50">
                             {m.type === "image" ? (
-                              // Photo icon
-                              <svg className="h-3.5 w-3.5 text-sky-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" />
-                              </svg>
+                              <svg className="h-4 w-4 text-sky-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>
                             ) : m.type === "video" ? (
-                              // Video icon
-                              <svg className="h-3.5 w-3.5 text-violet-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" />
-                              </svg>
+                              <svg className="h-4 w-4 text-violet-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" /></svg>
                             ) : m.type === "audio" ? (
-                              // Audio / music icon
-                              <svg className="h-3.5 w-3.5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-                              </svg>
+                              <svg className="h-4 w-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
                             ) : (
-                              // PDF / document icon
-                              <svg className="h-3.5 w-3.5 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="9" y1="13" x2="15" y2="13" /><line x1="9" y1="17" x2="15" y2="17" /><line x1="9" y1="9" x2="11" y2="9" />
-                              </svg>
+                              <svg className="h-4 w-4 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="9" y1="13" x2="15" y2="13" /><line x1="9" y1="17" x2="15" y2="17" /></svg>
                             )}
                           </span>
-                          <span className="min-w-0 truncate">{fileName}</span>
-                          <span className="w-14 shrink-0 capitalize text-zinc-500">{m.type}</span>
-                          <span className="w-16 shrink-0 text-[10px] text-zinc-400">
+                          <span className="min-w-0 truncate font-medium text-zinc-800">{fileName}</span>
+                          <span className="w-16 shrink-0 capitalize text-zinc-500">{m.type}</span>
+                          <span className="w-20 shrink-0 text-xs text-zinc-400 text-right">
                             {new Date(m.created_at).toLocaleDateString()}
                           </span>
                         </button>
@@ -836,7 +769,7 @@ function SpaceMediaQuadrant({
                             const r = await setSpaceMediaVisibility(spaceId, m.id, next);
                             if (r.ok) onRefresh();
                           }}
-                          className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium ${
+                          className={`shrink-0 rounded-lg border px-2 py-0.5 text-xs font-medium ${
                             vis === "external"
                               ? "border-black bg-zinc-900 text-white"
                               : "border-zinc-300 bg-zinc-100 text-zinc-700"
@@ -853,82 +786,55 @@ function SpaceMediaQuadrant({
           </div>
         </div>
 
-        <div className="mt-2 flex min-h-0 min-w-0 w-full max-w-full shrink flex-col overflow-hidden rounded-lg border border-zinc-300 bg-white/80 p-2 text-xs md:mt-0 md:w-40 md:max-w-[13rem] lg:w-52">
-          <div className="shrink-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
-              preview
-            </p>
-          </div>
-          <div className="mt-1 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        {/* Preview panel */}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white p-3 md:mt-0">
+          <p className="shrink-0 text-xs font-semibold uppercase tracking-[0.08em] text-zinc-400">Preview</p>
+          <div className="mt-2 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {!selected ? (
-              <p className="mt-4 text-[11px] text-zinc-500">
-                Select a file to preview it here.
-              </p>
+              <div className="flex flex-1 items-center justify-center">
+                <p className="text-sm text-zinc-400">Select a file to preview it here.</p>
+              </div>
             ) : selected.type === "image" ? (
-              <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded border border-zinc-200 bg-zinc-50">
-                <img
-                  src={selected.publicUrl}
-                  alt={selected.title ?? "Media"}
-                  className="absolute inset-0 h-full w-full object-contain"
-                />
+              <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50">
+                <img src={selected.publicUrl} alt={selected.title ?? "Media"} className="absolute inset-0 h-full w-full object-contain" />
               </div>
             ) : selected.type === "video" ? (
-              <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded border border-zinc-200 bg-zinc-50">
-                <video
-                  src={selected.publicUrl}
-                  controls
-                  className="absolute inset-0 h-full w-full object-contain"
-                />
+              <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50">
+                <video src={selected.publicUrl} controls className="absolute inset-0 h-full w-full object-contain" />
               </div>
             ) : selected.type === "audio" ? (
-              <div className="overflow-hidden rounded border border-zinc-200 bg-zinc-50 p-2">
+              <div className="overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 p-4">
                 <audio src={selected.publicUrl} controls className="w-full" />
               </div>
             ) : selected.type === "document" ? (
-              <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded border border-zinc-200 bg-zinc-50 flex flex-col items-center justify-center gap-2 p-3">
-                <svg className="h-8 w-8 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="9" y1="13" x2="15" y2="13" /><line x1="9" y1="17" x2="15" y2="17" />
-                </svg>
-                <p className="text-[10px] text-zinc-500 text-center">PDF Document</p>
-                <a
-                  href={selected.publicUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-white px-2 py-0.5 text-[10px] font-medium text-zinc-700 hover:bg-zinc-100"
-                >
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 p-6">
+                <svg className="h-12 w-12 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="9" y1="13" x2="15" y2="13" /><line x1="9" y1="17" x2="15" y2="17" /></svg>
+                <p className="text-sm text-zinc-500">PDF Document</p>
+                <a href={selected.publicUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-100">
                   Open PDF ↗
                 </a>
               </div>
             ) : (
-              <p className="mt-4 text-[11px] text-zinc-500">Unsupported preview type.</p>
+              <p className="text-sm text-zinc-500">Unsupported preview type.</p>
             )}
           </div>
           {selected && (
-            <div className="mt-2 min-w-0 shrink-0 space-y-0.5 overflow-hidden">
-              <p className="truncate text-[11px] font-medium">
-                {selected.title?.trim() ||
-                  selected.storage_path.split("/").pop() ||
-                  "Untitled"}
+            <div className="mt-3 shrink-0 space-y-1 border-t border-zinc-100 pt-3">
+              <p className="truncate text-sm font-medium text-zinc-800">
+                {selected.title?.trim() || selected.storage_path.split("/").pop() || "Untitled"}
               </p>
-              <p className="text-[10px] text-zinc-500 capitalize">{selected.type}</p>
+              <p className="text-xs text-zinc-500 capitalize">{selected.type}</p>
               <button
                 type="button"
                 onClick={() => setFullscreenOpen(true)}
-                className="mt-1 inline-flex max-w-full items-center justify-center gap-1 rounded border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-[10px] font-medium text-zinc-700 hover:bg-zinc-100"
-                title="View fullscreen"
+                className="mt-1 inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100"
               >
-                <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-                </svg>
+                <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" /></svg>
                 Fullscreen
               </button>
             </div>
           )}
-          {error && (
-            <p className="mt-2 text-[10px] text-red-600">
-              {error}
-            </p>
-          )}
+          {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
         </div>
       </div>
 
@@ -1024,14 +930,17 @@ function SpaceBulletinQuadrant({
   spaceId,
   bulletins,
   onRefresh,
+  className,
 }: {
   spaceId: string;
   bulletins: SpaceBulletin[];
   onRefresh: () => void;
+  className?: string;
 }) {
   const [addingCol, setAddingCol] = useState<CMYKKey | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [pending, setPending] = useState(false);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
   async function handleAdd(col: CMYKKey) {
     if (!newTitle.trim() || pending) return;
@@ -1046,64 +955,70 @@ function SpaceBulletinQuadrant({
   }
 
   return (
-    <section className="flex min-h-0 flex-col bg-zinc-100 p-3">
-      <h2 className="shrink-0 text-sm font-semibold tracking-tight">bulletin board</h2>
-      {/* 4 columns filling available width */}
-      <div className="mt-2 flex min-h-0 flex-1 gap-2 overflow-hidden">
+    <section className={`flex min-h-0 flex-col bg-zinc-50 p-5 ${className ?? ""}`}>
+      {menuOpenId && (
+        <div className="fixed inset-0 z-10" onClick={() => setMenuOpenId(null)} />
+      )}
+      <h2 className="shrink-0 text-base font-semibold tracking-tight">bulletin board</h2>
+      <div className="mt-3 flex min-h-0 flex-1 gap-3 overflow-hidden">
         {CMYK_COLUMNS.map((col) => {
-          const colBulletins = bulletins.filter(
-            (b) => (b.board_column ?? "C") === col.key
-          );
+          const colBulletins = bulletins.filter((b) => (b.board_column ?? "C") === col.key);
           const isAdding = addingCol === col.key;
 
           return (
             <div
               key={col.key}
-              className={`flex min-h-0 min-w-0 flex-1 flex-col rounded-lg border ${col.border} bg-white/70 overflow-hidden`}
+              className={`flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border ${col.border} bg-white overflow-hidden`}
             >
               {/* Column header */}
-              <div className={`flex items-center justify-between px-2.5 py-1.5 ${col.headerBg}`}>
-                <span className={`text-xs font-bold tracking-widest ${col.headerText}`}>
+              <div className={`flex items-center justify-between px-3 py-2.5 ${col.headerBg}`}>
+                <span className={`text-sm font-bold tracking-widest ${col.headerText}`}>
                   {col.label}
                 </span>
-                <span className="text-[10px] text-zinc-400">{colBulletins.length}</span>
+                <span className="text-xs text-zinc-400">{colBulletins.length}</span>
               </div>
 
               {/* Items */}
               <div className="flex min-h-0 flex-1 flex-col gap-0 overflow-y-auto">
-                {colBulletins.map((b) => {
-                  const vis = b.visibility ?? "internal";
-                  return (
-                    <div
-                      key={b.id}
-                      className="group flex items-start gap-1 border-b border-zinc-100 px-2.5 py-1.5 last:border-b-0"
-                    >
-                      <span className="mt-0.5 text-[10px] text-zinc-400 shrink-0">•</span>
-                      <p className="min-w-0 flex-1 text-[11px] leading-snug text-zinc-700 break-words">
-                        {b.title}
-                      </p>
+                {colBulletins.map((b) => (
+                  <div
+                    key={b.id}
+                    className="group relative flex items-start gap-2 border-b border-zinc-100 px-3 py-2.5 last:border-b-0"
+                  >
+                    <span className="mt-0.5 text-xs text-zinc-400 shrink-0">•</span>
+                    <p className="min-w-0 flex-1 text-sm leading-snug text-zinc-700 break-words">
+                      {b.title}
+                    </p>
+                    <div className="relative shrink-0">
                       <button
                         type="button"
-                        onClick={async () => {
-                          const next = vis === "external" ? "internal" : "external";
-                          const r = await setSpaceBulletinVisibility(spaceId, b.id, next);
-                          if (r.ok) onRefresh();
-                        }}
-                        className={`shrink-0 rounded border px-1 py-px text-[9px] font-medium opacity-0 group-hover:opacity-100 transition-opacity ${
-                          vis === "external"
-                            ? "border-black bg-zinc-900 text-white"
-                            : "border-zinc-300 bg-zinc-100 text-zinc-600"
-                        }`}
+                        onClick={() => setMenuOpenId(menuOpenId === b.id ? null : b.id)}
+                        className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 opacity-0 group-hover:opacity-100 hover:bg-zinc-100 hover:text-zinc-700 transition-opacity"
                       >
-                        {vis === "external" ? "Ext" : "Int"}
+                        ···
                       </button>
+                      {menuOpenId === b.id && (
+                        <div className="absolute right-0 top-full z-20 mt-1 min-w-[120px] rounded-lg border border-zinc-200 bg-white shadow-lg">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await deleteSpaceBulletin(spaceId, b.id);
+                              setMenuOpenId(null);
+                              onRefresh();
+                            }}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
 
                 {/* Inline add form */}
                 {isAdding ? (
-                  <div className="border-t border-zinc-100 p-2 space-y-1">
+                  <div className="border-t border-zinc-100 p-3 space-y-2">
                     <input
                       autoFocus
                       type="text"
@@ -1114,21 +1029,21 @@ function SpaceBulletinQuadrant({
                         if (e.key === "Escape") { setAddingCol(null); setNewTitle(""); }
                       }}
                       placeholder="Item title…"
-                      className="w-full rounded border border-zinc-300 bg-white px-1.5 py-1 text-[11px] outline-none focus:border-zinc-500"
+                      className="w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-zinc-500"
                     />
-                    <div className="flex gap-1">
+                    <div className="flex gap-1.5">
                       <button
                         type="button"
                         onClick={() => handleAdd(col.key)}
                         disabled={pending || !newTitle.trim()}
-                        className="flex-1 rounded border border-black bg-[#00cefc] px-1.5 py-0.5 text-[10px] font-semibold text-black disabled:opacity-50"
+                        className="flex-1 rounded-lg border border-black bg-[#00cefc] px-2 py-1 text-xs font-semibold text-black disabled:opacity-50"
                       >
                         Add
                       </button>
                       <button
                         type="button"
                         onClick={() => { setAddingCol(null); setNewTitle(""); }}
-                        className="rounded border border-zinc-300 px-1.5 py-0.5 text-[10px] text-zinc-500 hover:bg-zinc-100"
+                        className="rounded-lg border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-100"
                       >
                         ✕
                       </button>
@@ -1138,9 +1053,9 @@ function SpaceBulletinQuadrant({
                   <button
                     type="button"
                     onClick={() => { setAddingCol(col.key); setNewTitle(""); }}
-                    className={`m-2 flex items-center gap-1 rounded border px-2 py-1 text-[10px] font-medium transition-colors ${col.addBtnClass}`}
+                    className={`m-2.5 flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${col.addBtnClass}`}
                   >
-                    <span>+</span> New
+                    + New
                   </button>
                 )}
               </div>
@@ -1175,18 +1090,20 @@ function SpaceTasksQuadrant({
   tasks,
   members,
   onRefresh,
+  className,
 }: {
   spaceId: string;
   tasks: SpaceTask[];
   members: SpaceMember[];
   onRefresh: () => void;
+  className?: string;
 }) {
   const [title, setTitle] = useState("");
   const [newAssigneeId, setNewAssigneeId] = useState("");
   const [newDueDate, setNewDueDate] = useState("");
-  const [newPriority, setNewPriority] = useState<"low" | "medium" | "high" | "critical">("medium");
   const [pending, setPending] = useState(false);
   const [addingRow, setAddingRow] = useState(false);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
   async function handleAddTask() {
     if (!title.trim() || pending) return;
@@ -1196,7 +1113,6 @@ function SpaceTasksQuadrant({
       setTitle("");
       setNewDueDate("");
       setNewAssigneeId("");
-      setNewPriority("medium");
       setAddingRow(false);
       onRefresh();
     }
@@ -1204,41 +1120,43 @@ function SpaceTasksQuadrant({
   }
 
   return (
-    <section className="flex min-h-0 flex-col bg-zinc-100 p-3">
+    <section className={`flex min-h-0 flex-col bg-zinc-50 p-5 ${className ?? ""}`}>
+      {menuOpenId && (
+        <div className="fixed inset-0 z-10" onClick={() => setMenuOpenId(null)} />
+      )}
       {/* Header */}
       <div className="flex shrink-0 items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold tracking-tight">task board</h2>
+        <h2 className="text-base font-semibold tracking-tight">task board</h2>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-zinc-400">{tasks.length} task{tasks.length !== 1 ? "s" : ""}</span>
+          <span className="text-sm text-zinc-400">{tasks.length} task{tasks.length !== 1 ? "s" : ""}</span>
           <button
             type="button"
             onClick={() => setAddingRow(true)}
-            className="rounded border border-black bg-[#00cefc] px-3 py-1 text-xs font-semibold text-black hover:bg-[#00b3dd]"
+            className="rounded-lg border border-black bg-[#00cefc] px-3 py-1.5 text-sm font-semibold text-black hover:bg-[#00b3dd]"
           >
             + New
           </button>
         </div>
       </div>
 
-      {/* Notion-style task table */}
-      <div className="mt-2 min-h-0 flex-1 overflow-hidden rounded-lg border border-zinc-200 bg-white">
+      {/* Task table */}
+      <div className="mt-3 min-h-0 flex-1 overflow-hidden rounded-xl border border-zinc-200 bg-white">
         {/* Column headers */}
-        <div className="grid grid-cols-[1fr_80px_80px_70px_36px] border-b border-zinc-200 bg-zinc-50 px-2 py-1.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Name</span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Status</span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Assign</span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Deadline</span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Vis</span>
+        <div className="grid grid-cols-[1fr_120px_120px_110px_44px] border-b-2 border-zinc-200 bg-zinc-50">
+          <span className="border-r border-zinc-200 px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-400">Name</span>
+          <span className="border-r border-zinc-200 px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-400">Status</span>
+          <span className="border-r border-zinc-200 px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-400">Assign</span>
+          <span className="border-r border-zinc-200 px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-400">Deadline</span>
+          <span className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-400" />
         </div>
 
         {/* Task rows */}
         <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-zinc-100">
           {tasks.length === 0 && !addingRow && (
-            <p className="px-3 py-3 text-xs text-zinc-400">No tasks yet. Hit + New to add one.</p>
+            <p className="px-4 py-4 text-sm text-zinc-400">No tasks yet. Hit + New to add one.</p>
           )}
 
           {tasks.map((t) => {
-            const vis = t.visibility ?? "internal";
             const overdue = isOverdue(t.due_date);
             const dueSoon = isDueSoon(t.due_date);
             const statusStyle = STATUS_STYLES[t.status] ?? STATUS_STYLES.todo;
@@ -1246,22 +1164,24 @@ function SpaceTasksQuadrant({
             return (
               <div
                 key={t.id}
-                className="group grid grid-cols-[1fr_80px_80px_70px_36px] items-center gap-0 px-2 py-1.5 hover:bg-zinc-50"
+                className="group grid grid-cols-[1fr_120px_120px_110px_44px] items-stretch hover:bg-zinc-50"
               >
                 {/* Name */}
-                <p className={`truncate text-[11px] font-medium ${t.status === "done" ? "line-through text-zinc-400" : "text-zinc-800"}`}>
-                  {t.title}
-                </p>
+                <div className="flex items-center border-r border-zinc-100 px-3 py-3">
+                  <p className={`truncate text-sm font-medium ${t.status === "done" ? "line-through text-zinc-400" : "text-zinc-800"}`}>
+                    {t.title}
+                  </p>
+                </div>
 
-                {/* Status pill — click to cycle */}
-                <div>
+                {/* Status */}
+                <div className="flex items-center border-r border-zinc-100 px-3 py-3">
                   <select
                     value={t.status}
                     onChange={async (e) => {
                       const r = await updateSpaceTaskStatus(spaceId, t.id, e.target.value);
                       if (r.ok) onRefresh();
                     }}
-                    className={`cursor-pointer rounded-full border-0 px-1.5 py-0.5 text-[10px] font-medium outline-none ${statusStyle.pill}`}
+                    className={`cursor-pointer rounded-full border-0 px-2 py-1 text-xs font-medium outline-none ${statusStyle.pill}`}
                   >
                     {(["todo", "in_progress", "review", "done"] as const).map((s) => (
                       <option key={s} value={s}>{STATUS_STYLES[s].label}</option>
@@ -1270,7 +1190,7 @@ function SpaceTasksQuadrant({
                 </div>
 
                 {/* Assignee */}
-                <div>
+                <div className="flex items-center border-r border-zinc-100 px-3 py-3">
                   {members.length > 0 ? (
                     <select
                       value={t.assignee_id ?? ""}
@@ -1279,7 +1199,7 @@ function SpaceTasksQuadrant({
                         const r = await updateSpaceTaskDetails(spaceId, t.id, { assignee_id: val });
                         if (r.ok) onRefresh();
                       }}
-                      className="w-full truncate rounded border-0 bg-transparent text-[10px] text-zinc-600 outline-none hover:bg-zinc-100 px-0.5"
+                      className="w-full truncate rounded border-0 bg-transparent text-xs text-zinc-600 outline-none hover:bg-zinc-100 px-0.5"
                     >
                       <option value="">—</option>
                       {members.map((m) => (
@@ -1287,12 +1207,12 @@ function SpaceTasksQuadrant({
                       ))}
                     </select>
                   ) : (
-                    <span className="text-[10px] text-zinc-300">—</span>
+                    <span className="text-xs text-zinc-300">—</span>
                   )}
                 </div>
 
                 {/* Deadline */}
-                <div>
+                <div className="flex items-center border-r border-zinc-100 px-3 py-3">
                   <input
                     type="date"
                     defaultValue={t.due_date ?? ""}
@@ -1303,29 +1223,36 @@ function SpaceTasksQuadrant({
                         if (r.ok) onRefresh();
                       }
                     }}
-                    className={`w-full rounded border-0 bg-transparent text-[10px] outline-none hover:bg-zinc-100 px-0.5 ${
+                    className={`w-full rounded border-0 bg-transparent text-xs outline-none hover:bg-zinc-100 ${
                       overdue ? "text-red-600" : dueSoon ? "text-amber-600" : "text-zinc-500"
                     }`}
                   />
                 </div>
 
-                {/* Vis toggle */}
-                <div>
+                {/* Actions ⋯ */}
+                <div className="relative flex items-center justify-center px-2 py-3">
                   <button
                     type="button"
-                    onClick={async () => {
-                      const next = vis === "external" ? "internal" : "external";
-                      const r = await setSpaceTaskVisibility(spaceId, t.id, next);
-                      if (r.ok) onRefresh();
-                    }}
-                    className={`rounded border px-1 py-px text-[9px] font-medium opacity-0 group-hover:opacity-100 transition-opacity ${
-                      vis === "external"
-                        ? "border-black bg-zinc-900 text-white"
-                        : "border-zinc-300 bg-zinc-100 text-zinc-500"
-                    }`}
+                    onClick={() => setMenuOpenId(menuOpenId === t.id ? null : t.id)}
+                    className="flex h-7 w-7 items-center justify-center rounded text-zinc-400 opacity-0 group-hover:opacity-100 hover:bg-zinc-100 hover:text-zinc-700 transition-opacity text-base leading-none"
                   >
-                    {vis === "external" ? "E" : "I"}
+                    ···
                   </button>
+                  {menuOpenId === t.id && (
+                    <div className="absolute right-0 top-full z-20 mt-1 min-w-[120px] rounded-lg border border-zinc-200 bg-white shadow-lg">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await deleteSpaceTask(spaceId, t.id);
+                          setMenuOpenId(null);
+                          onRefresh();
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -1333,60 +1260,59 @@ function SpaceTasksQuadrant({
 
           {/* Inline add row */}
           {addingRow && (
-            <div className="grid grid-cols-[1fr_80px_80px_70px_36px] items-center gap-0 border-t border-zinc-100 bg-zinc-50 px-2 py-1.5">
-              <input
-                autoFocus
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleAddTask();
-                  if (e.key === "Escape") { setAddingRow(false); setTitle(""); }
-                }}
-                placeholder="Task name…"
-                className="rounded border border-zinc-300 bg-white px-1.5 py-0.5 text-[11px] outline-none focus:border-zinc-500"
-              />
-              <select
-                value={newPriority}
-                onChange={(e) => setNewPriority(e.target.value as typeof newPriority)}
-                className="rounded border border-zinc-200 bg-white px-1 py-0.5 text-[10px]"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-              </select>
-              {members.length > 0 ? (
-                <select
-                  value={newAssigneeId}
-                  onChange={(e) => setNewAssigneeId(e.target.value)}
-                  className="rounded border border-zinc-200 bg-white px-1 py-0.5 text-[10px]"
-                >
-                  <option value="">—</option>
-                  {members.map((m) => (
-                    <option key={m.id} value={m.id}>{m.display_name ?? m.id.slice(0, 8)}</option>
-                  ))}
-                </select>
-              ) : <span />}
-              <input
-                type="date"
-                value={newDueDate}
-                onChange={(e) => setNewDueDate(e.target.value)}
-                className="rounded border border-zinc-200 bg-white px-1 py-0.5 text-[10px]"
-              />
-              <div className="flex gap-0.5">
+            <div className="grid grid-cols-[1fr_120px_120px_110px_44px] items-stretch border-t border-zinc-100 bg-zinc-50">
+              <div className="border-r border-zinc-100 px-3 py-2.5">
+                <input
+                  autoFocus
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleAddTask();
+                    if (e.key === "Escape") { setAddingRow(false); setTitle(""); }
+                  }}
+                  placeholder="Task name…"
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-zinc-500"
+                />
+              </div>
+              <div className="flex items-center border-r border-zinc-100 px-3 py-2.5">
+                <span className="rounded-full bg-zinc-100 px-2 py-1 text-xs text-zinc-500">Not started</span>
+              </div>
+              <div className="border-r border-zinc-100 px-3 py-2.5">
+                {members.length > 0 ? (
+                  <select
+                    value={newAssigneeId}
+                    onChange={(e) => setNewAssigneeId(e.target.value)}
+                    className="w-full rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-xs"
+                  >
+                    <option value="">—</option>
+                    {members.map((m) => (
+                      <option key={m.id} value={m.id}>{m.display_name ?? m.id.slice(0, 8)}</option>
+                    ))}
+                  </select>
+                ) : <span />}
+              </div>
+              <div className="border-r border-zinc-100 px-3 py-2.5">
+                <input
+                  type="date"
+                  value={newDueDate}
+                  onChange={(e) => setNewDueDate(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-xs"
+                />
+              </div>
+              <div className="flex items-center justify-center gap-1 px-2 py-2.5">
                 <button
                   type="button"
                   onClick={handleAddTask}
                   disabled={pending || !title.trim()}
-                  className="rounded border border-black bg-[#00cefc] px-1.5 py-0.5 text-[10px] font-semibold text-black disabled:opacity-50"
+                  className="rounded-lg border border-black bg-[#00cefc] px-2 py-1 text-xs font-semibold text-black disabled:opacity-50"
                 >
                   {pending ? "…" : "✓"}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setAddingRow(false); setTitle(""); }}
-                  className="rounded border border-zinc-300 px-1 py-0.5 text-[10px] text-zinc-500 hover:bg-zinc-100"
+                  className="rounded-lg border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-100"
                 >
                   ✕
                 </button>
@@ -1399,9 +1325,9 @@ function SpaceTasksQuadrant({
             <button
               type="button"
               onClick={() => setAddingRow(true)}
-              className="flex w-full items-center gap-1.5 px-3 py-1.5 text-[11px] text-zinc-400 hover:bg-zinc-50 hover:text-zinc-600"
+              className="flex w-full items-center gap-2 px-4 py-3 text-sm text-zinc-400 hover:bg-zinc-50 hover:text-zinc-600"
             >
-              <span>+</span> New
+              + New
             </button>
           )}
         </div>
