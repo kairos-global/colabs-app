@@ -7,10 +7,10 @@ import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext";
 
 const navItems = [
   { href: "/", label: "Home" },
-  { href: "/profile", label: "Profile" },
   { href: "/community", label: "Community" },
   { href: "/search", label: "Search" },
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/profile", label: "Profile" },
 ];
 
 export type ShellProfile = {

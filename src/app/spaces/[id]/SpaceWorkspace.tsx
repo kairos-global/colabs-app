@@ -751,7 +751,6 @@ function SpaceMediaQuadrant({
                 </button>
               </div>
             </div>
-          </div>
 
           <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-zinc-300 bg-white/70">
             {media.length === 0 ? (
