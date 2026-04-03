@@ -431,7 +431,31 @@ export async function createSpaceInvite(input: {
       return { ok: false, error: error.message };
     }
 
-    return { ok: true, joinUrl: `/spaces/join/${token}` };
+    const joinUrl = `/spaces/join/${token}`;
+
+    // Send invite email when inviting by email address
+    if (input.inviteeEmail) {
+      try {
+        const { sendInviteEmail } = await import("@/lib/email/sendInviteEmail");
+        const { data: spaceRow } = await supabase
+          .from("spaces")
+          .select("title")
+          .eq("id", input.spaceId)
+          .single();
+        const spaceName = spaceRow?.title?.trim() || "Untitled Space";
+        const inviterName = (profile as { display_name?: string | null }).display_name?.trim() || "Someone";
+        await sendInviteEmail({
+          toEmail: input.inviteeEmail,
+          inviterName,
+          spaceName,
+          joinUrl,
+        });
+      } catch {
+        // Email failure is non-fatal — invite is already saved in DB
+      }
+    }
+
+    return { ok: true, joinUrl };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { ok: false, error: message };

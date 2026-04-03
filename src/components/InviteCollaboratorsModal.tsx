@@ -278,7 +278,7 @@ export function InviteCollaboratorsModal({ spaceId, onClose }: InviteCollaborato
                 {emailError && <p className="text-xs text-red-600">{emailError}</p>}
                 {emailSaved && (
                   <p className="text-xs font-medium text-emerald-600">
-                    Saved — send them an invite manually and they&apos;ll see it once they join Colabs.
+                    Invite sent! They&apos;ll receive an email with a link to join the space.
                   </p>
                 )}
                 <button
@@ -286,7 +286,7 @@ export function InviteCollaboratorsModal({ spaceId, onClose }: InviteCollaborato
                   disabled={emailPending}
                   className="rounded-full border border-black bg-[#00cefc] px-4 py-1.5 text-sm font-semibold text-black shadow-sm hover:bg-[#00b3dd] disabled:opacity-40"
                 >
-                  {emailPending ? "Saving…" : "Save invite"}
+                  {emailPending ? "Sending…" : "Send invite"}
                 </button>
               </form>
             </div>

@@ -682,7 +682,7 @@ function SpaceMediaQuadrant({
           </button>
         </div>
       </div>
-      <div className="mt-3 flex min-w-0 flex-1 flex-col gap-3 md:flex-row">
+      <div className="mt-3 flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden md:flex-row">
         {/* Left column: library + file list */}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden md:max-w-[300px] md:flex-none">
           <div className="min-w-0 flex-none rounded-xl border border-zinc-200 bg-white p-2">
