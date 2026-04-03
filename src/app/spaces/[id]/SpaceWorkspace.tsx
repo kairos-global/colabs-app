@@ -218,8 +218,8 @@ export function SpaceWorkspace({ spaceId, initialData, initialPublication }: Spa
         </div>
       </header>
 
-      <main className="flex-1 p-4 md:p-6">
-        <div className="mx-auto grid h-full min-h-[60vh] max-w-5xl grid-cols-1 grid-rows-4 gap-0.5 overflow-hidden rounded-xl border-2 border-black bg-black md:grid-cols-2 md:grid-rows-2 [&>*]:min-h-0">
+      <main className="flex flex-1 flex-col overflow-hidden">
+        <div className="grid flex-1 min-h-0 grid-cols-1 grid-rows-4 gap-px bg-zinc-300 md:grid-cols-2 md:grid-rows-2 [&>*]:min-h-0">
           <SpaceChatQuadrant
             spaceId={spaceId}
             messages={initialData.messages}
@@ -641,16 +641,42 @@ function SpaceMediaQuadrant({
 
   return (
     <section className="flex min-h-0 flex-col overflow-hidden bg-zinc-100 p-4">
-      <h2 className="shrink-0 text-sm font-semibold tracking-tight">view/upload media</h2>
-      <p className="text-xs text-zinc-500">photo / video / audio / documents</p>
-      <div className="mt-1 text-[10px] text-zinc-500">
-        {formatBytes(storage.usedBytes)} of {formatBytes(storage.maxBytes)} used
+      <div className="flex shrink-0 items-start justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-semibold tracking-tight">view/upload media</h2>
+          <p className="text-xs text-zinc-500">photo / video / audio / documents</p>
+          <div className="mt-0.5 text-[10px] text-zinc-500">
+            {formatBytes(storage.usedBytes)} of {formatBytes(storage.maxBytes)} used
+          </div>
+        </div>
+        <div className="flex shrink-0">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*,audio/*,.pdf,application/pdf"
+            multiple
+            className="sr-only"
+            onChange={handleUpload}
+            disabled={uploading}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="rounded border border-black bg-[#00cefc] px-3 py-1.5 text-xs font-medium text-black disabled:opacity-50"
+          >
+            {uploading && uploadProgress
+              ? `Uploading ${uploadProgress.current}/${uploadProgress.total}…`
+              : uploading
+              ? "Uploading…"
+              : "Upload…"}
+          </button>
+        </div>
       </div>
       <div className="mt-2 flex min-w-0 flex-1 flex-col gap-3 md:flex-row">
         {/* Left column: library + file list stacked in one view */}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden md:max-w-[280px] md:flex-none">
-          <div className="flex w-full shrink-0 flex-row items-start gap-2">
-            <div className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white/70 p-1.5">
+          <div className="min-w-0 flex-none rounded-lg border border-zinc-300 bg-white/70 p-1.5">
               <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
                 library
               </p>
@@ -724,29 +750,6 @@ function SpaceMediaQuadrant({
                   </span>
                 </button>
               </div>
-            </div>
-            <div className="flex shrink-0">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,video/*,audio/*,.pdf,application/pdf"
-                multiple
-                className="sr-only"
-                onChange={handleUpload}
-                disabled={uploading}
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="rounded border border-black bg-[#00cefc] px-2 py-1 text-xs font-medium text-black disabled:opacity-50"
-              >
-                {uploading && uploadProgress
-                  ? `Uploading ${uploadProgress.current}/${uploadProgress.total}…`
-                  : uploading
-                  ? "Uploading…"
-                  : "Upload…"}
-              </button>
             </div>
           </div>
 
@@ -980,7 +983,7 @@ function SpaceMediaQuadrant({
 const CMYK_COLUMNS = [
   {
     key: "C" as const,
-    label: "C",
+    label: "A",
     accent: "bg-cyan-400",
     headerText: "text-cyan-700",
     headerBg: "bg-cyan-50",
@@ -989,7 +992,7 @@ const CMYK_COLUMNS = [
   },
   {
     key: "M" as const,
-    label: "M",
+    label: "B",
     accent: "bg-fuchsia-400",
     headerText: "text-fuchsia-700",
     headerBg: "bg-fuchsia-50",
@@ -998,7 +1001,7 @@ const CMYK_COLUMNS = [
   },
   {
     key: "Y" as const,
-    label: "Y",
+    label: "C",
     accent: "bg-yellow-400",
     headerText: "text-yellow-700",
     headerBg: "bg-yellow-50",
@@ -1007,7 +1010,7 @@ const CMYK_COLUMNS = [
   },
   {
     key: "K" as const,
-    label: "K",
+    label: "D",
     accent: "bg-zinc-800",
     headerText: "text-zinc-100",
     headerBg: "bg-zinc-800",
@@ -1046,8 +1049,8 @@ function SpaceBulletinQuadrant({
   return (
     <section className="flex min-h-0 flex-col bg-zinc-100 p-3">
       <h2 className="shrink-0 text-sm font-semibold tracking-tight">bulletin board</h2>
-      {/* 4 CMYK columns scrolling horizontally */}
-      <div className="mt-2 flex min-h-0 flex-1 gap-2 overflow-x-auto pb-1">
+      {/* 4 columns filling available width */}
+      <div className="mt-2 flex min-h-0 flex-1 gap-2 overflow-hidden">
         {CMYK_COLUMNS.map((col) => {
           const colBulletins = bulletins.filter(
             (b) => (b.board_column ?? "C") === col.key
@@ -1057,7 +1060,7 @@ function SpaceBulletinQuadrant({
           return (
             <div
               key={col.key}
-              className={`flex min-h-0 w-36 shrink-0 flex-col rounded-lg border ${col.border} bg-white/70 overflow-hidden`}
+              className={`flex min-h-0 min-w-0 flex-1 flex-col rounded-lg border ${col.border} bg-white/70 overflow-hidden`}
             >
               {/* Column header */}
               <div className={`flex items-center justify-between px-2.5 py-1.5 ${col.headerBg}`}>
@@ -1185,7 +1188,6 @@ function SpaceTasksQuadrant({
   const [newPriority, setNewPriority] = useState<"low" | "medium" | "high" | "critical">("medium");
   const [pending, setPending] = useState(false);
   const [addingRow, setAddingRow] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<string>("all");
 
   async function handleAddTask() {
     if (!title.trim() || pending) return;
@@ -1202,43 +1204,21 @@ function SpaceTasksQuadrant({
     setPending(false);
   }
 
-  const filteredTasks = filterStatus === "all"
-    ? tasks
-    : tasks.filter((t) => t.status === filterStatus);
-
   return (
     <section className="flex min-h-0 flex-col bg-zinc-100 p-3">
       {/* Header */}
       <div className="flex shrink-0 items-center justify-between gap-2">
         <h2 className="text-sm font-semibold tracking-tight">task board</h2>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-zinc-400">{tasks.length} task{tasks.length !== 1 ? "s" : ""}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-zinc-400">{tasks.length} task{tasks.length !== 1 ? "s" : ""}</span>
           <button
             type="button"
             onClick={() => setAddingRow(true)}
-            className="rounded border border-black bg-[#00cefc] px-2 py-0.5 text-[10px] font-semibold text-black hover:bg-[#00b3dd]"
+            className="rounded border border-black bg-[#00cefc] px-3 py-1 text-xs font-semibold text-black hover:bg-[#00b3dd]"
           >
             + New
           </button>
         </div>
-      </div>
-
-      {/* Status filter pills */}
-      <div className="mt-1.5 flex shrink-0 flex-wrap gap-1">
-        {[["all", "All"], ["todo", "Not started"], ["in_progress", "In progress"], ["review", "Reviewing"], ["done", "Done"]].map(([val, label]) => (
-          <button
-            key={val}
-            type="button"
-            onClick={() => setFilterStatus(val)}
-            className={`rounded-full border px-2 py-px text-[10px] font-medium transition ${
-              filterStatus === val
-                ? "border-black bg-black text-white"
-                : "border-zinc-300 bg-white text-zinc-500 hover:bg-zinc-100"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
       </div>
 
       {/* Notion-style task table */}
@@ -1254,13 +1234,11 @@ function SpaceTasksQuadrant({
 
         {/* Task rows */}
         <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-zinc-100">
-          {filteredTasks.length === 0 && !addingRow && (
-            <p className="px-3 py-3 text-xs text-zinc-400">
-              {filterStatus === "all" ? "No tasks yet. Hit + New to add one." : `No ${filterStatus.replace("_", " ")} tasks.`}
-            </p>
+          {tasks.length === 0 && !addingRow && (
+            <p className="px-3 py-3 text-xs text-zinc-400">No tasks yet. Hit + New to add one.</p>
           )}
 
-          {filteredTasks.map((t) => {
+          {tasks.map((t) => {
             const vis = t.visibility ?? "internal";
             const overdue = isOverdue(t.due_date);
             const dueSoon = isDueSoon(t.due_date);
