@@ -136,8 +136,8 @@ export function SpaceWorkspace({ spaceId, initialData, initialPublication }: Spa
   }, [router]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="flex items-center justify-between gap-4 border-b border-black px-4 py-3 md:px-6">
+    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-black px-4 py-3 md:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-4">
           <Link
             href="/dashboard"
