@@ -1,4 +1,5 @@
 import { getSpacePageData, getSpacePublicationSummary } from "@/app/spaces/actions";
+import { getCommunityPublishStatusForSpace } from "@/app/community/actions";
 import { SpaceWorkspace } from "./SpaceWorkspace";
 
 type SpaceWorkspacePageProps = {
@@ -7,15 +8,16 @@ type SpaceWorkspacePageProps = {
 
 export default async function SpaceWorkspacePage({ params }: SpaceWorkspacePageProps) {
   const { id } = await params;
-  const [data, publication] = await Promise.all([
+  const [data, publication, communityPublish] = await Promise.all([
     getSpacePageData(id),
     getSpacePublicationSummary(id),
+    getCommunityPublishStatusForSpace(id),
   ]);
 
   if (!data) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-4">
-        <p className="text-sm text-zinc-600">Space not found or you don’t have access.</p>
+        <p className="text-sm text-zinc-600">Space not found or you don't have access.</p>
         <a
           href="/dashboard"
           className="rounded-full border border-black bg-[#00cefc] px-4 py-2 text-sm font-semibold text-black"
@@ -27,6 +29,11 @@ export default async function SpaceWorkspacePage({ params }: SpaceWorkspacePageP
   }
 
   return (
-    <SpaceWorkspace spaceId={id} initialData={data} initialPublication={publication} />
+    <SpaceWorkspace
+      spaceId={id}
+      initialData={data}
+      initialPublication={publication}
+      initialCommunityPublish={communityPublish}
+    />
   );
 }

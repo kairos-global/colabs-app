@@ -27,6 +27,7 @@ import {
   type SpaceMember,
   type PublicationAnalytics,
 } from "@/app/spaces/actions";
+import { publishToCommunity } from "@/app/community/actions";
 import { InviteCollaboratorsModal } from "@/components/InviteCollaboratorsModal";
 import { useSidebar } from "@/contexts/SidebarContext";
 
@@ -39,9 +40,10 @@ type SpaceWorkspaceProps = {
     visibility_scope: string | null;
     title: string | null;
   } | null;
+  initialCommunityPublish: { id: string; title: string } | null;
 };
 
-export function SpaceWorkspace({ spaceId, initialData, initialPublication }: SpaceWorkspaceProps) {
+export function SpaceWorkspace({ spaceId, initialData, initialPublication, initialCommunityPublish }: SpaceWorkspaceProps) {
   const router = useRouter();
   const { collapse, expand } = useSidebar();
   const initialTitle =
@@ -63,6 +65,14 @@ export function SpaceWorkspace({ spaceId, initialData, initialPublication }: Spa
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [analytics, setAnalytics] = useState<PublicationAnalytics | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [communityPublishOpen, setCommunityPublishOpen] = useState(false);
+  const [communityPublishId, setCommunityPublishId] = useState<string | null>(
+    initialCommunityPublish?.id ?? null
+  );
+  const [communityTitle, setCommunityTitle] = useState(initialData.title || "Untitled");
+  const [communitySummary, setCommunitySummary] = useState("");
+  const [communityPending, setCommunityPending] = useState(false);
+  const [communityError, setCommunityError] = useState<string | null>(null);
   const pendingNavigateRef = useRef<string | null>(null);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -203,6 +213,29 @@ export function SpaceWorkspace({ spaceId, initialData, initialPublication }: Spa
             className="rounded-lg border border-black bg-[#00cefc] px-3 py-1.5 text-sm font-semibold text-black hover:bg-[#00b3dd] disabled:opacity-50"
           >
             {saving ? "Saving…" : saveStatus === "saved" ? "Saved" : "save"}
+          </button>
+          {communityPublishId && (
+            <Link
+              href={`/community/collabs/${communityPublishId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg border border-[color:var(--border-subtle)] bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+            >
+              view on community
+            </Link>
+          )}
+          <button
+            type="button"
+            disabled={!canPublish}
+            onClick={() => {
+              setCommunityError(null);
+              setCommunityTitle(title.trim() || initialData.title || "Untitled");
+              setCommunityPublishOpen(true);
+            }}
+            className="rounded-lg border border-[color:var(--border-subtle)] bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
+            title={!canPublish ? "Add at least 2 members to post to community" : undefined}
+          >
+            {communityPublishId ? "repost to community" : "post to community"}
           </button>
           <button
             type="button"
@@ -407,6 +440,88 @@ export function SpaceWorkspace({ spaceId, initialData, initialPublication }: Spa
                 type="button"
                 disabled={publishPending}
                 onClick={() => setPublishOpen(false)}
+                className="rounded-full border border-[color:var(--border-subtle)] px-4 py-1.5 text-sm font-medium hover:bg-zinc-100"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {communityPublishOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => !communityPending && setCommunityPublishOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-[color:var(--border-subtle)] bg-background p-6 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold tracking-tight">
+              {communityPublishId ? "Repost to Community" : "Post to Community"}
+            </h2>
+            <p className="mt-2 text-sm text-zinc-600">
+              Only items marked <strong>external</strong> in each panel will appear on the public
+              community page.
+            </p>
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-600">
+                  Title
+                </label>
+                <input
+                  value={communityTitle}
+                  onChange={(e) => setCommunityTitle(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-[color:var(--border-subtle)] bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-600">
+                  Summary
+                </label>
+                <textarea
+                  value={communitySummary}
+                  onChange={(e) => setCommunitySummary(e.target.value)}
+                  rows={3}
+                  placeholder="A short description of what this collaboration was about…"
+                  className="mt-1 w-full rounded-lg border border-[color:var(--border-subtle)] bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                />
+              </div>
+            </div>
+            {communityError && <p className="mt-2 text-sm text-red-600">{communityError}</p>}
+            <div className="mt-6 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={communityPending}
+                onClick={async () => {
+                  setCommunityPending(true);
+                  setCommunityError(null);
+                  const result = await publishToCommunity({
+                    spaceId,
+                    title: communityTitle.trim() || "Untitled",
+                    summary: communitySummary.trim() || undefined,
+                  });
+                  setCommunityPending(false);
+                  if (result.ok) {
+                    setCommunityPublishId(result.collabId);
+                    setCommunityPublishOpen(false);
+                  } else {
+                    setCommunityError(result.error);
+                  }
+                }}
+                className="rounded-full border border-black bg-[#00cefc] px-4 py-1.5 text-sm font-semibold text-black hover:bg-[#00b3dd] disabled:opacity-50"
+              >
+                {communityPending
+                  ? "Posting…"
+                  : communityPublishId
+                  ? "Repost"
+                  : "Post to Community"}
+              </button>
+              <button
+                type="button"
+                disabled={communityPending}
+                onClick={() => setCommunityPublishOpen(false)}
                 className="rounded-full border border-[color:var(--border-subtle)] px-4 py-1.5 text-sm font-medium hover:bg-zinc-100"
               >
                 Cancel
