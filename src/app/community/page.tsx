@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { getCommunityListings, getCommunityPublishedCollabs, CATEGORY_LABELS } from "./actions";
-import type { ListingCategory } from "./actions";
+import { getCommunityListings, getCommunityPublishedCollabs } from "./actions";
+import { CATEGORY_LABELS, type ListingCategory } from "./categories";
 
 export default async function CommunityPage() {
   const [listings, publishedCollabs] = await Promise.all([

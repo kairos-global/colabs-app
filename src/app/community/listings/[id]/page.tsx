@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
-import { getListingDetail, createListingApplication, CATEGORY_LABELS } from "../../actions";
-import type { ListingCategory } from "../../actions";
+import { getListingDetail, createListingApplication } from "../../actions";
+import { CATEGORY_LABELS, type ListingCategory } from "../../categories";
 
 type ListingPageProps = {
   params: Promise<{ id: string }>;

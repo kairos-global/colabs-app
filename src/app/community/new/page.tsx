@@ -2,52 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { createCollaborationListing } from "../actions";
 import {
-  createCollaborationListing,
   LISTING_CATEGORIES,
   CATEGORY_LABELS,
+  CATEGORY_GROUPS,
   type ListingCategory,
-} from "../actions";
-
-// Group labels for visual section headers inside the picker
-const CATEGORY_GROUPS: { label: string; keys: ListingCategory[] }[] = [
-  {
-    label: "Photography & Film",
-    keys: ["photographer", "videographer", "cinematographer", "film-director", "screenwriter", "film-editor"],
-  },
-  {
-    label: "Music",
-    keys: ["musician", "vocalist", "songwriter", "music-producer", "dj", "beat-maker", "audio-engineer", "sound-designer"],
-  },
-  {
-    label: "Animation & VFX",
-    keys: ["animator", "motion-designer", "vfx-artist", "3d-artist"],
-  },
-  {
-    label: "Design",
-    keys: ["graphic-designer", "brand-designer", "art-director", "illustrator", "ui-ux-designer", "typographer"],
-  },
-  {
-    label: "Art",
-    keys: ["painter", "muralist", "sculptor", "digital-artist", "printmaker", "collage-artist"],
-  },
-  {
-    label: "Fashion",
-    keys: ["fashion-designer", "stylist", "costume-designer", "textile-artist"],
-  },
-  {
-    label: "Performance",
-    keys: ["dancer", "choreographer", "actor", "performer"],
-  },
-  {
-    label: "Events & Production",
-    keys: ["event-producer", "set-designer", "lighting-designer"],
-  },
-  {
-    label: "Marketing & Content",
-    keys: ["marketer", "content-creator", "copywriter", "social-media", "publicist"],
-  },
-];
+} from "../categories";
 
 export default function NewListingPage() {
   const router = useRouter();
