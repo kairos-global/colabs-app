@@ -31,6 +31,66 @@ import { publishToCommunity } from "@/app/community/actions";
 import { InviteCollaboratorsModal } from "@/components/InviteCollaboratorsModal";
 import { useSidebar } from "@/contexts/SidebarContext";
 
+const CONTENT_STYLES = [
+  {
+    category: "Music",
+    variants: [
+      { id: "music-single-v1", name: "Single — V1", desc: "Audio file + title" },
+      { id: "music-single-v2", name: "Single — V2", desc: "Audio + title + cover art + photography" },
+      { id: "music-single-v3", name: "Single — V3", desc: "Audio + title + cover art + photography + music video" },
+      { id: "music-ep", name: "EP", desc: "Extended play release" },
+      { id: "music-album", name: "Album", desc: "Full album release" },
+    ],
+  },
+  {
+    category: "Zine",
+    variants: [
+      { id: "zine-v1", name: "Mini Zine Draft", desc: "Early-stage mini zine format" },
+      { id: "zine-v2", name: "Mini Zine", desc: "Finished mini zine" },
+      { id: "zine-v3", name: "Half Letter Zine", desc: "Half-letter format zine" },
+      { id: "zine-v4", name: "Full Zine", desc: "Full letter format publication" },
+    ],
+  },
+  {
+    category: "Photography & Film",
+    variants: [
+      { id: "photo-series-v1", name: "Photo Series — V1", desc: "Photos + title" },
+      { id: "photo-series-v2", name: "Photo Series — V2", desc: "Photos + title + description + location" },
+      { id: "photo-editorial", name: "Editorial", desc: "Curated editorial spread" },
+      { id: "short-film", name: "Short Film", desc: "Short film or video project" },
+      { id: "music-video", name: "Music Video", desc: "Music video production" },
+      { id: "documentary", name: "Documentary", desc: "Documentary or docu-short" },
+    ],
+  },
+  {
+    category: "Design & Art",
+    variants: [
+      { id: "art-series", name: "Art Series", desc: "Collection of artwork" },
+      { id: "lookbook-v1", name: "Lookbook — V1", desc: "Fashion lookbook" },
+      { id: "lookbook-v2", name: "Lookbook — V2", desc: "Lookbook with photography and styling notes" },
+      { id: "brand-identity", name: "Brand Identity", desc: "Logo, type, and color system" },
+      { id: "print-design", name: "Print Design", desc: "Poster, flyer, or print work" },
+    ],
+  },
+  {
+    category: "Social / Platform",
+    variants: [
+      { id: "youtube-video", name: "YouTube Video", desc: "Long-form video content" },
+      { id: "instagram-reel", name: "Instagram Reel", desc: "Short-form vertical video" },
+      { id: "tiktok", name: "TikTok", desc: "Short-form creative video" },
+      { id: "podcast", name: "Podcast Episode", desc: "Audio podcast or episode" },
+    ],
+  },
+  {
+    category: "Performance & Events",
+    variants: [
+      { id: "live-performance", name: "Live Performance", desc: "Concert, show, or live event" },
+      { id: "collab-set", name: "Collaborative Set", desc: "Joint DJ or live set" },
+      { id: "theater", name: "Theater / Play", desc: "Stage performance or theatrical production" },
+    ],
+  },
+];
+
 type SpaceWorkspaceProps = {
   spaceId: string;
   initialData: NonNullable<SpacePageData>;
@@ -57,22 +117,16 @@ export function SpaceWorkspace({ spaceId, initialData, initialPublication, initi
   const [inviteOpen, setInviteOpen] = useState(false);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
-  const [publishTitle, setPublishTitle] = useState(initialData.title || "Untitled");
-  const [publishSummary, setPublishSummary] = useState("");
-  const [publishScope, setPublishScope] = useState<"public" | "unlisted">("unlisted");
+  const [publishContentStyle, setPublishContentStyle] = useState<string | null>(null);
+  const [publishPostToCommunity, setPublishPostToCommunity] = useState(true);
   const [publishPending, setPublishPending] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [analytics, setAnalytics] = useState<PublicationAnalytics | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
-  const [communityPublishOpen, setCommunityPublishOpen] = useState(false);
   const [communityPublishId, setCommunityPublishId] = useState<string | null>(
     initialCommunityPublish?.id ?? null
   );
-  const [communityTitle, setCommunityTitle] = useState(initialData.title || "Untitled");
-  const [communitySummary, setCommunitySummary] = useState("");
-  const [communityPending, setCommunityPending] = useState(false);
-  const [communityError, setCommunityError] = useState<string | null>(null);
   const pendingNavigateRef = useRef<string | null>(null);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -228,21 +282,9 @@ export function SpaceWorkspace({ spaceId, initialData, initialPublication, initi
             type="button"
             disabled={!canPublish}
             onClick={() => {
-              setCommunityError(null);
-              setCommunityTitle(title.trim() || initialData.title || "Untitled");
-              setCommunityPublishOpen(true);
-            }}
-            className="rounded-lg border border-[color:var(--border-subtle)] bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
-            title={!canPublish ? "Add at least 2 members to post to community" : undefined}
-          >
-            {communityPublishId ? "repost to community" : "post to community"}
-          </button>
-          <button
-            type="button"
-            disabled={!canPublish}
-            onClick={() => {
               setPublishError(null);
-              setPublishTitle(title.trim() || initialData.title || "Untitled");
+              setPublishContentStyle(null);
+              setPublishPostToCommunity(true);
               setPublishOpen(true);
             }}
             className="rounded-lg border border-[color:var(--border-subtle)] bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
@@ -342,87 +384,133 @@ export function SpaceWorkspace({ spaceId, initialData, initialPublication, initi
 
       {publishOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           onClick={() => !publishPending && setPublishOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl border border-[color:var(--border-subtle)] bg-background p-6 shadow-lg"
+            className="flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[color:var(--border-subtle)] bg-background shadow-xl"
+            style={{ maxHeight: "90vh" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-semibold tracking-tight">Publish space</h2>
-            <p className="mt-2 text-sm text-zinc-600">
-              Only items marked <strong>external</strong> in each panel appear on the public page.
-            </p>
-            <div className="mt-4 space-y-3">
+            {/* Header */}
+            <div className="flex shrink-0 items-center justify-between border-b border-zinc-100 px-6 py-4">
               <div>
-                <label className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-600">
-                  Title
-                </label>
-                <input
-                  value={publishTitle}
-                  onChange={(e) => setPublishTitle(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-[color:var(--border-subtle)] bg-white px-3 py-2 text-sm"
-                />
+                <h2 className="text-lg font-semibold tracking-tight">Publish</h2>
+                <p className="mt-0.5 text-sm text-zinc-500">
+                  Choose a content style — or skip to publish as-is.
+                </p>
               </div>
-              <div>
-                <label className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-600">
-                  Summary
-                </label>
-                <textarea
-                  value={publishSummary}
-                  onChange={(e) => setPublishSummary(e.target.value)}
-                  rows={3}
-                  className="mt-1 w-full rounded-lg border border-[color:var(--border-subtle)] bg-white px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-600">
-                  Visibility
-                </label>
-                <select
-                  value={publishScope}
-                  onChange={(e) =>
-                    setPublishScope(e.target.value as "public" | "unlisted")
-                  }
-                  className="mt-1 w-full rounded-lg border border-[color:var(--border-subtle)] bg-white px-3 py-2 text-sm"
-                >
-                  <option value="unlisted">Unlisted (link only)</option>
-                  <option value="public">Public</option>
-                </select>
-              </div>
-            </div>
-            {publishError && <p className="mt-2 text-sm text-red-600">{publishError}</p>}
-            <div className="mt-6 flex flex-wrap gap-2">
               <button
                 type="button"
-                disabled={publishPending}
-                onClick={async () => {
-                  setPublishPending(true);
-                  setPublishError(null);
-                  const result = await publishSpace(spaceId, {
-                    title: publishTitle.trim() || "Untitled",
-                    summary: publishSummary.trim() || null,
-                    visibilityScope: publishScope,
-                  });
-                  setPublishPending(false);
-                  if (result.ok) {
-                    setPublishOpen(false);
-                    router.refresh();
-                  } else {
-                    setPublishError(result.error);
-                  }
-                }}
-                className="rounded-full border border-black bg-[#00cefc] px-4 py-1.5 text-sm font-semibold text-black hover:bg-[#00b3dd] disabled:opacity-50"
+                onClick={() => !publishPending && setPublishOpen(false)}
+                className="rounded-full p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
               >
-                {publishPending ? "Publishing…" : "Publish now"}
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
               </button>
-              {initialPublication?.published_at && (
+            </div>
+
+            {/* Scrollable style picker */}
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+              <div className="space-y-6">
+                {CONTENT_STYLES.map((group) => (
+                  <div key={group.category}>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+                      {group.category}
+                    </p>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {group.variants.map((v) => {
+                        const isSelected = publishContentStyle === v.id;
+                        return (
+                          <button
+                            key={v.id}
+                            type="button"
+                            onClick={() =>
+                              setPublishContentStyle(isSelected ? null : v.id)
+                            }
+                            className={`group flex items-start gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${
+                              isSelected
+                                ? "border-zinc-900 bg-zinc-900 text-white"
+                                : "border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50"
+                            }`}
+                          >
+                            <span
+                              className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                                isSelected
+                                  ? "border-[#00cefc] bg-[#00cefc]"
+                                  : "border-zinc-300 bg-white group-hover:border-zinc-400"
+                              }`}
+                            >
+                              {isSelected && (
+                                <svg className="h-2 w-2 text-black" viewBox="0 0 8 8" fill="currentColor"><circle cx="4" cy="4" r="3" /></svg>
+                              )}
+                            </span>
+                            <div className="min-w-0">
+                              <p className={`text-sm font-medium ${isSelected ? "text-white" : "text-zinc-800"}`}>
+                                {v.name}
+                              </p>
+                              <p className={`mt-0.5 text-xs leading-snug ${isSelected ? "text-zinc-300" : "text-zinc-500"}`}>
+                                {v.desc}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="shrink-0 border-t border-zinc-100 px-6 py-4">
+              {/* Community toggle */}
+              <label className="mb-4 flex cursor-pointer items-center gap-3">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={publishPostToCommunity}
+                  onClick={() => setPublishPostToCommunity((v) => !v)}
+                  className={`relative h-5 w-9 rounded-full transition-colors focus-visible:outline-none ${
+                    publishPostToCommunity ? "bg-zinc-900" : "bg-zinc-200"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                      publishPostToCommunity ? "translate-x-4" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+                <span className="text-sm text-zinc-700">Post to CoLabs community</span>
+              </label>
+
+              {publishError && <p className="mb-3 text-sm text-red-600">{publishError}</p>}
+
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   disabled={publishPending}
                   onClick={async () => {
                     setPublishPending(true);
-                    const result = await unpublishSpace(spaceId);
+                    setPublishError(null);
+                    const spaceTitle = title.trim() || initialData.title || "Untitled";
+                    const selectedStyle = publishContentStyle
+                      ? CONTENT_STYLES.flatMap((g) => g.variants).find((v) => v.id === publishContentStyle)
+                      : null;
+                    const result = await publishSpace(spaceId, {
+                      title: spaceTitle,
+                      summary: selectedStyle ? `${selectedStyle.name} — ${selectedStyle.desc}` : null,
+                      visibilityScope: "public",
+                    });
+                    if (result.ok && publishPostToCommunity) {
+                      const communityResult = await publishToCommunity({
+                        spaceId,
+                        title: spaceTitle,
+                        summary: selectedStyle ? selectedStyle.name : undefined,
+                      });
+                      if (communityResult.ok) {
+                        setCommunityPublishId(communityResult.collabId);
+                      }
+                    }
                     setPublishPending(false);
                     if (result.ok) {
                       setPublishOpen(false);
@@ -431,101 +519,48 @@ export function SpaceWorkspace({ spaceId, initialData, initialPublication, initi
                       setPublishError(result.error);
                     }
                   }}
-                  className="rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+                  className="rounded-full border border-black bg-[#00cefc] px-5 py-2 text-sm font-semibold text-black hover:bg-[#00b3dd] disabled:opacity-50"
                 >
-                  Unpublish
+                  {publishPending ? "Publishing…" : "Publish"}
                 </button>
-              )}
-              <button
-                type="button"
-                disabled={publishPending}
-                onClick={() => setPublishOpen(false)}
-                className="rounded-full border border-[color:var(--border-subtle)] px-4 py-1.5 text-sm font-medium hover:bg-zinc-100"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {communityPublishOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => !communityPending && setCommunityPublishOpen(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl border border-[color:var(--border-subtle)] bg-background p-6 shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-lg font-semibold tracking-tight">
-              {communityPublishId ? "Repost to Community" : "Post to Community"}
-            </h2>
-            <p className="mt-2 text-sm text-zinc-600">
-              Only items marked <strong>external</strong> in each panel will appear on the public
-              community page.
-            </p>
-            <div className="mt-4 space-y-3">
-              <div>
-                <label className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-600">
-                  Title
-                </label>
-                <input
-                  value={communityTitle}
-                  onChange={(e) => setCommunityTitle(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-[color:var(--border-subtle)] bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400"
-                />
+                {initialPublication?.published_at && (
+                  <button
+                    type="button"
+                    disabled={publishPending}
+                    onClick={async () => {
+                      setPublishPending(true);
+                      const result = await unpublishSpace(spaceId);
+                      setPublishPending(false);
+                      if (result.ok) {
+                        setPublishOpen(false);
+                        router.refresh();
+                      } else {
+                        setPublishError(result.error);
+                      }
+                    }}
+                    className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+                  >
+                    Unpublish
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled={publishPending}
+                  onClick={() => setPublishOpen(false)}
+                  className="rounded-full border border-[color:var(--border-subtle)] px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100"
+                >
+                  Cancel
+                </button>
+                {publishContentStyle && (
+                  <button
+                    type="button"
+                    onClick={() => setPublishContentStyle(null)}
+                    className="ml-auto text-xs text-zinc-400 underline-offset-2 hover:text-zinc-600 hover:underline"
+                  >
+                    Clear selection
+                  </button>
+                )}
               </div>
-              <div>
-                <label className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-600">
-                  Summary
-                </label>
-                <textarea
-                  value={communitySummary}
-                  onChange={(e) => setCommunitySummary(e.target.value)}
-                  rows={3}
-                  placeholder="A short description of what this collaboration was about…"
-                  className="mt-1 w-full rounded-lg border border-[color:var(--border-subtle)] bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400"
-                />
-              </div>
-            </div>
-            {communityError && <p className="mt-2 text-sm text-red-600">{communityError}</p>}
-            <div className="mt-6 flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={communityPending}
-                onClick={async () => {
-                  setCommunityPending(true);
-                  setCommunityError(null);
-                  const result = await publishToCommunity({
-                    spaceId,
-                    title: communityTitle.trim() || "Untitled",
-                    summary: communitySummary.trim() || undefined,
-                  });
-                  setCommunityPending(false);
-                  if (result.ok) {
-                    setCommunityPublishId(result.collabId);
-                    setCommunityPublishOpen(false);
-                  } else {
-                    setCommunityError(result.error);
-                  }
-                }}
-                className="rounded-full border border-black bg-[#00cefc] px-4 py-1.5 text-sm font-semibold text-black hover:bg-[#00b3dd] disabled:opacity-50"
-              >
-                {communityPending
-                  ? "Posting…"
-                  : communityPublishId
-                  ? "Repost"
-                  : "Post to Community"}
-              </button>
-              <button
-                type="button"
-                disabled={communityPending}
-                onClick={() => setCommunityPublishOpen(false)}
-                className="rounded-full border border-[color:var(--border-subtle)] px-4 py-1.5 text-sm font-medium hover:bg-zinc-100"
-              >
-                Cancel
-              </button>
             </div>
           </div>
         </div>
@@ -797,35 +832,32 @@ function SpaceMediaQuadrant({
           </button>
         </div>
       </div>
-      <div className="mt-3 flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden md:flex-row">
-        {/* Left column: library + file list */}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden md:max-w-[300px] md:flex-none">
-          <div className="min-w-0 flex-none rounded-xl border border-zinc-200 bg-white p-2">
-            <p className="px-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-zinc-400">
-              Library
-            </p>
-            <div className="mt-1.5 space-y-0.5 text-sm">
-              {(["all", "image", "video", "audio", "document"] as const).map((type) => {
-                const labels: Record<string, string> = { all: "All media", image: "Photos", video: "Video", audio: "Audio", document: "Documents" };
-                const count = type === "all" ? media.length : media.filter((m) => m.type === type).length;
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setFilter(type)}
-                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left ${
-                      filter === type ? "bg-zinc-900 text-zinc-50" : "text-zinc-700 hover:bg-zinc-100"
-                    }`}
-                  >
-                    <span>{labels[type]}</span>
-                    <span className="text-xs text-zinc-400">{count}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+      {/* Library pill tabs */}
+      <div className="mt-3 flex shrink-0 flex-wrap gap-1.5">
+        {(["all", "image", "video", "audio", "document"] as const).map((type) => {
+          const labels: Record<string, string> = { all: "All media", image: "Photos", video: "Video", audio: "Audio", document: "Documents" };
+          const count = type === "all" ? media.length : media.filter((m) => m.type === type).length;
+          return (
+            <button
+              key={type}
+              type="button"
+              onClick={() => setFilter(type)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                filter === type
+                  ? "border-zinc-900 bg-zinc-900 text-zinc-50"
+                  : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50"
+              }`}
+            >
+              {labels[type]}
+              <span className={`rounded-full px-1 text-[10px] tabular-nums ${filter === type ? "bg-white/20 text-zinc-200" : "bg-zinc-100 text-zinc-400"}`}>{count}</span>
+            </button>
+          );
+        })}
+      </div>
 
-          <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-zinc-200 bg-white">
+      <div className="mt-2 flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden md:flex-row">
+        {/* File list */}
+        <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-zinc-200 bg-white">
             {media.length === 0 ? (
               <div className="flex h-full items-center justify-center px-4 py-8">
                 <p className="text-sm text-zinc-400 text-center">No media yet. Upload files to see them here.</p>
@@ -899,7 +931,6 @@ function SpaceMediaQuadrant({
               </div>
             )}
           </div>
-        </div>
 
         {/* Preview panel */}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white p-3 md:mt-0">
