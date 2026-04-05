@@ -100,6 +100,7 @@ export default function ListingSearch({
 }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<ListingCategory[]>([]);
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -132,13 +133,25 @@ export default function ListingSearch({
     })).filter((g) => g.cats.length > 0);
   }, [suggestions]);
 
-  // Filter listings: if categories are selected, only show listings that have at least one
+  // Filter listings by individual categories (search bar) and/or group bubbles
   const filtered = useMemo(() => {
-    if (selected.length === 0) return initialListings;
-    return initialListings.filter((listing) =>
-      listing.categories.some((cat) => selected.includes(cat as ListingCategory))
-    );
-  }, [selected, initialListings]);
+    const noFilter = selected.length === 0 && selectedGroups.length === 0;
+    if (noFilter) return initialListings;
+    return initialListings.filter((listing) => {
+      const matchesCategory =
+        selected.length > 0 &&
+        listing.categories.some((cat) => selected.includes(cat as ListingCategory));
+      const matchesGroup =
+        selectedGroups.length > 0 &&
+        listing.categories.some((cat) =>
+          selectedGroups.some((groupLabel) => {
+            const group = CATEGORY_GROUPS.find((g) => g.label === groupLabel);
+            return group?.keys.includes(cat as ListingCategory);
+          })
+        );
+      return matchesCategory || matchesGroup;
+    });
+  }, [selected, selectedGroups, initialListings]);
 
   function addCategory(cat: ListingCategory) {
     if (!selected.includes(cat)) setSelected((prev) => [...prev, cat]);
@@ -149,6 +162,12 @@ export default function ListingSearch({
 
   function removeCategory(cat: ListingCategory) {
     setSelected((prev) => prev.filter((c) => c !== cat));
+  }
+
+  function toggleGroup(label: string) {
+    setSelectedGroups((prev) =>
+      prev.includes(label) ? prev.filter((g) => g !== label) : [...prev, label]
+    );
   }
 
   function handleInputChange(value: string) {
@@ -258,16 +277,40 @@ export default function ListingSearch({
         )}
       </div>
 
+      {/* Group bubble grid */}
+      <div className="flex flex-wrap gap-2 max-w-2xl">
+        {CATEGORY_GROUPS.map((group) => {
+          const active = selectedGroups.includes(group.label);
+          return (
+            <button
+              key={group.label}
+              type="button"
+              onClick={() => toggleGroup(group.label)}
+              className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors
+                ${active
+                  ? "border-black bg-[#00cefc] font-semibold text-black"
+                  : "border-zinc-300 bg-white text-zinc-700 hover:border-zinc-400 hover:bg-zinc-50"
+                }`}
+            >
+              {group.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Active filter summary + clear */}
-      {selected.length > 0 && (
+      {(selected.length > 0 || selectedGroups.length > 0) && (
         <div className="flex items-center gap-3 -mt-3">
           <p className="text-xs text-zinc-500">
-            Filtering by <span className="font-semibold text-zinc-700">{selected.length}</span>{" "}
-            {selected.length === 1 ? "category" : "categories"}
+            Filtering by{" "}
+            <span className="font-semibold text-zinc-700">
+              {selected.length + selectedGroups.length}
+            </span>{" "}
+            {selected.length + selectedGroups.length === 1 ? "filter" : "filters"}
           </p>
           <button
             type="button"
-            onClick={() => setSelected([])}
+            onClick={() => { setSelected([]); setSelectedGroups([]); }}
             className="text-xs text-zinc-400 underline underline-offset-2 hover:text-zinc-600"
           >
             Clear all
