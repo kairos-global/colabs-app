@@ -167,7 +167,7 @@ export default function ListingSearch({
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 bg-background px-6 py-12 text-foreground">
+    <main className="flex min-h-screen flex-col gap-8 bg-background px-8 py-12 text-foreground md:px-12">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -298,7 +298,7 @@ export default function ListingSearch({
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {filtered.map((listing) => (
               <ListingCard key={listing.id} listing={listing} />
             ))}

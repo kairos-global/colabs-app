@@ -9,7 +9,7 @@ export default async function CommunityPage() {
   ]);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-10 bg-background px-6 py-12 text-foreground">
+    <main className="flex min-h-screen flex-col gap-10 bg-background px-8 py-12 text-foreground md:px-12">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Community</h1>
         <p className="mt-2 text-sm leading-relaxed text-zinc-600">
@@ -36,7 +36,7 @@ export default async function CommunityPage() {
             No open collaboration listings yet. Be the first to post one.
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {listings.map((listing) => {
               const images = getCategoryGroupImages(listing.categories);
               return (
@@ -115,7 +115,7 @@ export default async function CommunityPage() {
             No published collaborations yet. Teams can post finished work from their space.
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {publishedCollabs.map((collab) => (
               <Link
                 key={collab.id}
