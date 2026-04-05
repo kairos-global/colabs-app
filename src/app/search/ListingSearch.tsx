@@ -6,6 +6,7 @@ import {
   CATEGORY_LABELS,
   CATEGORY_GROUPS,
   LISTING_CATEGORIES,
+  getCategoryGroupImages,
   type ListingCategory,
 } from "@/app/community/categories";
 import { type CommunityListingSummary } from "@/app/community/actions";
@@ -22,12 +23,29 @@ function matchesQuery(cat: ListingCategory, query: string) {
 // ── Listing card ─────────────────────────────────────────────────────────────
 
 function ListingCard({ listing }: { listing: CommunityListingSummary }) {
+  const images = getCategoryGroupImages(listing.categories);
   return (
     <Link
       href={`/community/listings/${listing.id}`}
-      className="block rounded-2xl border border-[color:var(--border-subtle)] bg-white/90 px-5 py-4 hover:bg-zinc-50 transition-colors"
+      className="block overflow-hidden rounded-2xl border border-[color:var(--border-subtle)] bg-white/90 hover:bg-zinc-50 transition-colors"
     >
-      <div className="flex items-start justify-between gap-3">
+      {/* Split category image header */}
+      {images.length > 0 && (
+        <div className="flex h-36 w-full overflow-hidden">
+          {images.map((src, i) => (
+            <div key={i} className="relative flex-1 overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={src} alt="" className="h-full w-full object-cover" />
+              {i > 0 && (
+                <div className="absolute inset-y-0 left-0 w-px bg-white/40" />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Card content */}
+      <div className="flex items-start justify-between gap-3 px-5 py-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <p className="text-sm font-semibold tracking-tight">{listing.title}</p>

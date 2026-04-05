@@ -109,6 +109,40 @@ export const CATEGORY_LABELS: Record<ListingCategory, string> = {
   "publicist": "Publicist",
 };
 
+// Maps each category group label to its stock image in /public/images/categories/
+export const CATEGORY_GROUP_IMAGES: Record<string, string> = {
+  "Photography & Film": "/images/categories/photography&film.jpg",
+  "Music": "/images/categories/music.jpg",
+  "Animation & VFX": "/images/categories/animation&vfx.jpg",
+  "Design": "/images/categories/design.jpg",
+  "Art": "/images/categories/art.jpg",
+  "Fashion": "/images/categories/fashion.jpg",
+  "Performance": "/images/categories/performance.jpg",
+  "Events & Production": "/images/categories/events&production.jpg",
+  "Marketing & Content": "/images/categories/marketing.jpg",
+};
+
+/**
+ * Given a listing's categories array, returns one image URL per unique
+ * category group represented — in the order the categories appear.
+ * Used to build the split-panel header image on listing cards.
+ */
+export function getCategoryGroupImages(categories: string[]): string[] {
+  const seen = new Set<string>();
+  const images: string[] = [];
+  for (const cat of categories) {
+    for (const group of CATEGORY_GROUPS) {
+      if (group.keys.includes(cat as ListingCategory) && !seen.has(group.label)) {
+        seen.add(group.label);
+        const img = CATEGORY_GROUP_IMAGES[group.label];
+        if (img) images.push(img);
+        break;
+      }
+    }
+  }
+  return images;
+}
+
 export const CATEGORY_GROUPS: { label: string; keys: ListingCategory[] }[] = [
   {
     label: "Photography & Film",
