@@ -57,7 +57,7 @@ export function ProfileView({ data }: ProfileViewProps) {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-3xl flex-col bg-background px-4 py-8 text-foreground md:px-6 md:py-12">
+    <div className="flex min-h-screen flex-col bg-background px-8 py-10 text-foreground md:px-12 md:py-12">
 
       {editOpen && profile && (
         <EditProfileModal profile={profile} onClose={() => setEditOpen(false)} />
