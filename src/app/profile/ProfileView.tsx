@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useClerk } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import { EditProfileModal } from "@/components/EditProfileModal";
 import { UploadProfileMediaModal } from "@/components/UploadProfileMediaModal";
 import { ProfileItemDetailModal, type DetailItem } from "@/components/ProfileItemDetailModal";
@@ -11,22 +13,114 @@ type ProfileViewProps = {
   data: ProfilePageData;
 };
 
+function Avatar({ name, url, size = 96 }: { name: string | null; url: string | null; size?: number }) {
+  const initial = name?.trim()?.[0]?.toUpperCase() ?? "?";
+  if (url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt={name ?? "avatar"}
+        style={{ width: size, height: size }}
+        className="rounded-full object-cover border-2 border-[color:var(--border-subtle)] shrink-0"
+      />
+    );
+  }
+  return (
+    <div
+      style={{ width: size, height: size, fontSize: size * 0.36 }}
+      className="flex shrink-0 items-center justify-center rounded-full bg-zinc-900 font-bold text-white"
+    >
+      {initial}
+    </div>
+  );
+}
+
 export function ProfileView({ data }: ProfileViewProps) {
   const { profile, profileMedia, publishedCollabs } = data;
   const [editOpen, setEditOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [detailItem, setDetailItem] = useState<DetailItem | null>(null);
   const [activeTab, setActiveTab] = useState<"posts" | "video" | "collabs">("posts");
+  const [signingOut, setSigningOut] = useState(false);
+
+  const { signOut } = useClerk();
+  const router = useRouter();
 
   const posts = profileMedia.filter((m) => m.type === "image");
   const videos = profileMedia.filter((m) => m.type === "video");
 
+  async function handleSignOut() {
+    setSigningOut(true);
+    await signOut({ redirectUrl: "/" });
+    router.push("/");
+  }
+
   return (
-    <div className="mx-auto flex min-h-screen max-w-3xl flex-col gap-4 bg-background px-4 py-5 text-foreground md:gap-6 md:px-6 md:py-10">
-      <header className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
-        {profile && (
-          <div className="flex gap-2 text-sm">
+    <div className="mx-auto flex min-h-screen max-w-3xl flex-col bg-background px-4 py-8 text-foreground md:px-6 md:py-12">
+
+      {editOpen && profile && (
+        <EditProfileModal profile={profile} onClose={() => setEditOpen(false)} />
+      )}
+      {uploadOpen && <UploadProfileMediaModal onClose={() => setUploadOpen(false)} />}
+      <ProfileItemDetailModal item={detailItem} onClose={() => setDetailItem(null)} />
+
+      {/* ── Profile hero ── */}
+      <section className="flex flex-col gap-6">
+
+        {/* Avatar row */}
+        <div className="flex items-start gap-5 sm:gap-7">
+          <Avatar
+            name={profile?.display_name ?? null}
+            url={profile?.avatar_url ?? null}
+            size={96}
+          />
+
+          <div className="min-w-0 flex-1 pt-1">
+            <h1 className="text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl">
+              {profile?.display_name?.trim() || (
+                <span className="text-zinc-400">Your name</span>
+              )}
+            </h1>
+
+            {profile?.bio?.trim() ? (
+              <p className="mt-1.5 text-sm leading-relaxed text-zinc-600 sm:text-base">
+                {profile.bio.trim()}
+              </p>
+            ) : (
+              <p className="mt-1.5 text-sm text-zinc-400">No bio yet</p>
+            )}
+
+            {profile?.url?.trim() && (
+              <a
+                href={profile.url.trim()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-block text-sm text-[#00cefc] hover:underline"
+              >
+                {profile.url.trim()}
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <button
+            type="button"
+            onClick={() => setEditOpen(true)}
+            className="rounded-full border border-black bg-background px-4 py-1.5 font-medium hover:bg-zinc-100"
+          >
+            Edit profile
+          </button>
+          <button
+            type="button"
+            onClick={() => setUploadOpen(true)}
+            className="rounded-full border border-black bg-[#00cefc] px-4 py-1.5 font-semibold text-black shadow-sm hover:bg-[#00b3dd]"
+          >
+            Upload media
+          </button>
+          {profile && (
             <a
               href={`/profile/${profile.id}`}
               target="_blank"
@@ -35,161 +129,118 @@ export function ProfileView({ data }: ProfileViewProps) {
             >
               Public page ↗
             </a>
-            <button
-              type="button"
-              onClick={() => setEditOpen(true)}
-              className="rounded-full border border-black bg-background px-4 py-1.5 font-medium hover:bg-zinc-100"
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              onClick={() => setUploadOpen(true)}
-              className="rounded-full border border-black bg-[#00cefc] px-4 py-1.5 font-semibold text-black shadow-sm hover:bg-[#00b3dd]"
-            >
-              Upload media
-            </button>
-          </div>
-        )}
-      </header>
+          )}
 
-      {editOpen && profile && (
-        <EditProfileModal profile={profile} onClose={() => setEditOpen(false)} />
-      )}
-      {uploadOpen && <UploadProfileMediaModal onClose={() => setUploadOpen(false)} />}
-      <ProfileItemDetailModal item={detailItem} onClose={() => setDetailItem(null)} />
+          {/* Spacer pushes sign out to the right */}
+          <div className="flex-1" />
 
-      {/* Profile card: larger on mobile, less outer padding */}
-      <section className="rounded-2xl border border-[color:var(--border-subtle)] bg-sidebar p-5 md:p-6">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-6">
-          <div className="shrink-0">
-            {profile?.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt=""
-                className="h-28 w-28 rounded-full border border-[color:var(--border-subtle)] object-cover sm:h-32 sm:w-32"
-              />
-            ) : (
-              <div className="flex h-28 w-28 items-center justify-center rounded-full bg-black text-center text-xs font-medium text-white sm:h-32 sm:w-32">
-                profile picture
-              </div>
-            )}
-          </div>
-          <div className="min-w-0 flex-1 space-y-1">
-            <p className="text-base font-medium text-foreground md:text-lg">
-              {profile?.display_name?.trim() || "name"}
-            </p>
-            <p className="text-sm text-zinc-600">
-              {profile?.bio?.trim() || "bio"}
-            </p>
-            <p className="text-sm text-zinc-600">
-              {profile?.url?.trim() || "url"}
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="rounded-full border border-zinc-200 bg-background px-4 py-1.5 font-medium text-zinc-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 transition-colors"
+          >
+            {signingOut ? "Signing out…" : "Sign out"}
+          </button>
         </div>
 
-        {/* Tabs: unified pill, cyan active */}
-        <div className="mt-5 border-t border-[color:var(--border-subtle)] pt-4 md:mt-6">
-          <div
-            className="flex overflow-hidden rounded-lg border border-[color:var(--border-subtle)] bg-zinc-200/80"
-            role="tablist"
-          >
-            {(
-              [
-                { id: "posts" as const, label: "Posts" },
-                { id: "video" as const, label: "Video" },
-                { id: "collabs" as const, label: "Collabs" },
-              ] as const
-            ).map((tab, i) => (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={activeTab === tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
-                  i === 0 ? "rounded-l-lg" : ""
-                } ${i === 2 ? "rounded-r-lg" : ""} ${
-                  activeTab === tab.id
-                    ? "bg-[#00cefc] text-white"
-                    : "bg-white text-foreground hover:bg-zinc-50"
-                } ${i < 2 && activeTab !== tab.id ? "border-r border-[color:var(--border-subtle)]" : ""}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+        {/* Divider */}
+        <div className="border-t border-[color:var(--border-subtle)]" />
+      </section>
 
-          <div className="mt-4 min-h-[120px]">
-            {activeTab === "posts" && (
-              <TabContentPosts
-                items={posts}
-                emptyMessage="Posts, videos, and collabs will appear here."
-                onDetail={(item) => setDetailItem({ type: "media", item })}
-              />
-            )}
-            {activeTab === "video" && (
-              <TabContentVideos
-                items={videos}
-                emptyMessage="Posts, videos, and collabs will appear here."
-                onDetail={(item) => setDetailItem({ type: "media", item })}
-              />
-            )}
-            {activeTab === "collabs" && (
-              <TabContentCollabs
-                items={publishedCollabs}
-                emptyMessage="Posts, videos, and collabs will appear here."
-                onDetail={(item) => setDetailItem({ type: "collab", item })}
-              />
-            )}
-          </div>
+      {/* ── Tabs ── */}
+      <section className="mt-6 flex flex-col gap-5">
+        <div
+          className="flex overflow-hidden rounded-xl border border-[color:var(--border-subtle)] bg-zinc-100"
+          role="tablist"
+        >
+          {(
+            [
+              { id: "posts" as const, label: "Posts", count: posts.length },
+              { id: "video" as const, label: "Video", count: videos.length },
+              { id: "collabs" as const, label: "Collabs", count: publishedCollabs.length },
+            ] as const
+          ).map((tab, i) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex flex-1 items-center justify-center gap-2 py-2.5 px-4 text-sm font-medium transition-colors
+                ${i > 0 ? "border-l border-[color:var(--border-subtle)]" : ""}
+                ${activeTab === tab.id
+                  ? "bg-zinc-900 text-white"
+                  : "bg-white text-zinc-600 hover:bg-zinc-50"
+                }`}
+            >
+              {tab.label}
+              {tab.count > 0 && (
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none
+                  ${activeTab === tab.id ? "bg-white/20 text-white" : "bg-zinc-200 text-zinc-500"}`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab content */}
+        <div className="min-h-[160px]">
+          {activeTab === "posts" && (
+            <TabContentPosts
+              items={posts}
+              onDetail={(item) => setDetailItem({ type: "media", item })}
+            />
+          )}
+          {activeTab === "video" && (
+            <TabContentVideos
+              items={videos}
+              onDetail={(item) => setDetailItem({ type: "media", item })}
+            />
+          )}
+          {activeTab === "collabs" && (
+            <TabContentCollabs
+              items={publishedCollabs}
+              onDetail={(item) => setDetailItem({ type: "collab", item })}
+            />
+          )}
         </div>
       </section>
     </div>
   );
 }
 
+// ── Tab content helpers ───────────────────────────────────────────────────────
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="flex items-center justify-center rounded-2xl border border-dashed border-[color:var(--border-subtle)] bg-zinc-50 py-14 text-sm text-zinc-400">
+      {message}
+    </div>
+  );
+}
+
 function TabContentPosts({
   items,
-  emptyMessage,
   onDetail,
 }: {
   items: ProfileMediaWithUrl[];
-  emptyMessage: string;
   onDetail: (item: ProfileMediaWithUrl) => void;
 }) {
-  if (items.length === 0) {
-    return (
-      <div className="rounded-xl border border-[color:var(--border-subtle)] bg-zinc-200/60 p-6 text-center text-sm text-zinc-600">
-        {emptyMessage}
-      </div>
-    );
-  }
+  if (items.length === 0) return <EmptyState message="No posts yet — upload some media to get started." />;
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {items.map((item) => (
-        <div
+        <button
           key={item.id}
-          className="flex flex-col overflow-hidden rounded-xl border border-[color:var(--border-subtle)] bg-zinc-100"
+          type="button"
+          onClick={() => onDetail(item)}
+          className="group relative aspect-square overflow-hidden rounded-xl border border-[color:var(--border-subtle)] bg-zinc-100"
         >
-          <a
-            href={item.publicUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block aspect-square overflow-hidden"
-          >
-            <img src={item.publicUrl} alt={item.caption ?? "Post"} className="h-full w-full object-cover" />
-          </a>
-          <div className="flex justify-center p-2">
-            <button
-              type="button"
-              onClick={() => onDetail(item)}
-              className="rounded-full border border-black bg-background px-3 py-1 text-xs font-medium hover:bg-zinc-200"
-            >
-              Detail
-            </button>
-          </div>
-        </div>
+          <img src={item.publicUrl} alt={item.caption ?? "Post"} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+          <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/20" />
+        </button>
       ))}
     </div>
   );
@@ -197,45 +248,28 @@ function TabContentPosts({
 
 function TabContentVideos({
   items,
-  emptyMessage,
   onDetail,
 }: {
   items: ProfileMediaWithUrl[];
-  emptyMessage: string;
   onDetail: (item: ProfileMediaWithUrl) => void;
 }) {
-  if (items.length === 0) {
-    return (
-      <div className="rounded-xl border border-[color:var(--border-subtle)] bg-zinc-200/60 p-6 text-center text-sm text-zinc-600">
-        {emptyMessage}
-      </div>
-    );
-  }
+  if (items.length === 0) return <EmptyState message="No videos yet — upload a video to get started." />;
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {items.map((item) => (
-        <div
+        <button
           key={item.id}
-          className="flex flex-col overflow-hidden rounded-xl border border-[color:var(--border-subtle)] bg-zinc-100"
+          type="button"
+          onClick={() => onDetail(item)}
+          className="group relative aspect-square overflow-hidden rounded-xl border border-[color:var(--border-subtle)] bg-zinc-100"
         >
-          <a
-            href={item.publicUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block aspect-square overflow-hidden"
-          >
-            <video src={item.publicUrl} className="h-full w-full object-cover" />
-          </a>
-          <div className="flex justify-center p-2">
-            <button
-              type="button"
-              onClick={() => onDetail(item)}
-              className="shrink-0 rounded-full border border-black bg-background px-3 py-1 text-xs font-medium hover:bg-zinc-200"
-            >
-              Detail
-            </button>
+          <video src={item.publicUrl} className="h-full w-full object-cover" />
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20 transition-colors group-hover:bg-black/30">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow">
+              <span className="ml-0.5 text-black">▶</span>
+            </div>
           </div>
-        </div>
+        </button>
       ))}
     </div>
   );
@@ -243,41 +277,29 @@ function TabContentVideos({
 
 function TabContentCollabs({
   items,
-  emptyMessage,
   onDetail,
 }: {
   items: PublishedCollab[];
-  emptyMessage: string;
   onDetail: (item: PublishedCollab) => void;
 }) {
-  if (items.length === 0) {
-    return (
-      <div className="rounded-xl border border-[color:var(--border-subtle)] bg-zinc-200/60 p-6 text-center text-sm text-zinc-600">
-        {emptyMessage}
-      </div>
-    );
-  }
+  if (items.length === 0) return <EmptyState message="No published collabs yet." />;
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+    <div className="space-y-2">
       {items.map((c) => (
-        <div
+        <button
           key={c.id}
-          className="flex flex-col justify-between gap-2 rounded-xl border border-[color:var(--border-subtle)] bg-zinc-100 p-4"
+          type="button"
+          onClick={() => onDetail(c)}
+          className="flex w-full items-start justify-between gap-4 rounded-2xl border border-[color:var(--border-subtle)] bg-white px-5 py-4 text-left hover:bg-zinc-50 transition-colors"
         >
           <div className="min-w-0 flex-1">
-            <p className="font-medium text-foreground">{c.title}</p>
-            {c.summary && <p className="mt-1 text-sm text-zinc-600">{c.summary}</p>}
+            <p className="font-semibold text-foreground">{c.title}</p>
+            {c.summary && (
+              <p className="mt-1 line-clamp-2 text-sm text-zinc-500">{c.summary}</p>
+            )}
           </div>
-          <div className="flex justify-center">
-            <button
-              type="button"
-              onClick={() => onDetail(c)}
-              className="shrink-0 rounded-full border border-black bg-background px-3 py-1 text-xs font-medium hover:bg-zinc-200"
-            >
-              Detail
-            </button>
-          </div>
-        </div>
+          <span className="shrink-0 text-xs text-zinc-400">View →</span>
+        </button>
       ))}
     </div>
   );
