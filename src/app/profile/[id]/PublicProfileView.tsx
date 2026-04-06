@@ -19,7 +19,7 @@ export function PublicProfileView({ data }: { data: PublicProfilePageData }) {
   ];
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-3xl flex-col gap-4 bg-background px-4 py-5 text-foreground md:gap-6 md:px-6 md:py-10">
+    <div className="flex min-h-screen flex-col gap-4 bg-background px-8 py-5 text-foreground md:gap-6 md:px-12 md:py-10">
       {/* Back to CoLabs */}
       <div className="flex items-center justify-between">
         <Link
